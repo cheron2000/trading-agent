@@ -53,6 +53,7 @@ Live Market Data (yfinance + Yahoo RSS)
 ## Tech Stack
 
 - **LLM**: Llama 3.3 70B via Groq (free tier — 14,400 req/day)
+- **Markets**: Cryptocurrency (BTC, ETH, SOL, BNB, AVAX) — 24/7 trading
 - **Market Data**: yfinance, Yahoo Finance RSS
 - **Indicators**: RSI, MACD, Bollinger Bands, ATR, VWAP, SMA, EMA
 - **Sizing**: Quarter-Kelly Criterion with drawdown throttle

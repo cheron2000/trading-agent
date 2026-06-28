@@ -48,7 +48,7 @@ os.environ["GROQ_API_KEY"] = GROQ_API_KEY
 # ── AGENT CONFIGURATION ──────────────────────────────────────
 CONFIG = {
     # Assets to trade (Yahoo Finance tickers)
-    "watchlist": ["AAPL", "TSLA", "NVDA", "MSFT", "AMZN"],
+    "watchlist": ["BTC-USD", "ETH-USD", "SOL-USD", "BNB-USD", "AVAX-USD"],
 
     # Paper trading starting capital (USD)
     "starting_capital": 100_000.0,
@@ -60,6 +60,7 @@ CONFIG = {
     "confidence_threshold": 0.65,
 
     # Polling interval between live analysis cycles (seconds)
+    # Crypto trades 24/7 — shorter intervals are fine
     "poll_interval_seconds": 60,
 
     # Number of trading cycles to run (set to None for infinite)
@@ -70,6 +71,11 @@ CONFIG = {
 
     # Lookback window for price history (days)
     "price_history_days": 30,
+
+    # Crypto-specific settings
+    "asset_class": "CRYPTO",            # switches sentiment source + labels
+    "crypto_interval": "1h",           # 1h candles for intraday signals
+    "min_trade_notional": 10.0,        # min $10 per trade (crypto is divisible)
 }
 
 print("✅ Configuration loaded.")
@@ -215,6 +221,85 @@ def fetch_sentiment(ticker: str, max_headlines: int = 5) -> dict:
 
 # ── MARKET STATE VECTOR BUILDER ───────────────────────────────
 
+# ── CRYPTO SENTIMENT (CoinGecko RSS + crypto keyword lists) ──
+
+CRYPTO_TICKER_MAP = {
+    "BTC-USD"  : ("bitcoin",  "BTC"),
+    "ETH-USD"  : ("ethereum", "ETH"),
+    "SOL-USD"  : ("solana",   "SOL"),
+    "BNB-USD"  : ("bnb",      "BNB"),
+    "AVAX-USD" : ("avalanche","AVAX"),
+    "DOGE-USD" : ("dogecoin", "DOGE"),
+    "XRP-USD"  : ("ripple",   "XRP"),
+    "ADA-USD"  : ("cardano",  "ADA"),
+}
+
+def fetch_crypto_sentiment(ticker: str, max_headlines: int = 5) -> dict:
+    """
+    Pulls crypto news from CoinTelegraph RSS + Yahoo Finance RSS.
+    Uses crypto-specific bullish/bearish keyword lists.
+    """
+    coin_id, coin_symbol = CRYPTO_TICKER_MAP.get(ticker, ("bitcoin", "BTC"))
+
+    positive_words = {
+        "surge", "soar", "rally", "bullish", "breakout", "adoption",
+        "upgrade", "partnership", "record", "high", "gain", "moon",
+        "accumulate", "buy", "institutional", "etf", "approval",
+        "milestone", "growth", "halving", "listing", "integration",
+    }
+    negative_words = {
+        "crash", "plunge", "bearish", "hack", "exploit", "ban",
+        "regulation", "lawsuit", "sell", "dump", "fear", "panic",
+        "liquidation", "scam", "fraud", "warning", "decline", "drop",
+        "loss", "risk", "concern", "investigation", "delist",
+    }
+
+    headlines      = []
+    sentiment_score = 0.0
+
+    # Try multiple RSS sources for crypto
+    rss_urls = [
+        f"https://feeds.finance.yahoo.com/rss/2.0/headline?s={ticker}&region=US&lang=en-US",
+        f"https://cointelegraph.com/rss/tag/{coin_id}",
+    ]
+
+    for url in rss_urls:
+        try:
+            req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+            with urllib.request.urlopen(req, timeout=6) as resp:
+                xml_data = resp.read()
+            root  = ET.fromstring(xml_data)
+            items = root.findall(".//item")[:max_headlines]
+            for item in items:
+                title = item.findtext("title", default="").strip()
+                if not title or title in headlines:
+                    continue
+                headlines.append(title)
+                words = set(re.sub(r"[^a-z ]", "", title.lower()).split())
+                pos = len(words & positive_words)
+                neg = len(words & negative_words)
+                sentiment_score += (pos - neg)
+            if headlines:
+                break   # got enough from first working source
+        except Exception:
+            continue
+
+    if not headlines:
+        headlines       = ["[Crypto sentiment feed unavailable]"]
+        sentiment_score = 0.0
+
+    if headlines and headlines[0] != "[Crypto sentiment feed unavailable]":
+        sentiment_score = max(-1.0, min(1.0, sentiment_score / (len(headlines) * 3)))
+
+    label = "POSITIVE" if sentiment_score > 0.1 else ("NEGATIVE" if sentiment_score < -0.1 else "NEUTRAL")
+    return {
+        "headlines"       : headlines,
+        "sentiment_score" : round(sentiment_score, 3),
+        "sentiment_label" : label,
+        "source"          : "CryptoRSS",
+    }
+
+
 def build_market_state_vector(ticker: str, history_days: int = 30) -> str:
     \"\"\"
     Aggregates real-time price data + sentiment into a single
@@ -223,8 +308,12 @@ def build_market_state_vector(ticker: str, history_days: int = 30) -> str:
     now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
 
     try:
-        stock = yf.Ticker(ticker)
-        df    = stock.history(period=f"{history_days}d", interval="1d")
+        stock    = yf.Ticker(ticker)
+        is_crypto = CONFIG.get("asset_class") == "CRYPTO"
+        interval  = CONFIG.get("crypto_interval", "1h") if is_crypto else "1d"
+        # For hourly crypto: fetch last 30 days at 1h resolution
+        period    = f"{min(history_days, 29)}d" if is_crypto else f"{history_days}d"
+        df        = stock.history(period=period, interval=interval)
         info  = stock.fast_info
 
         if df.empty or len(df) < 20:
@@ -283,8 +372,12 @@ def build_market_state_vector(ticker: str, history_days: int = 30) -> str:
             "NEUTRAL"
         )
 
-        # ── Sentiment
-        sentiment = fetch_sentiment(ticker)
+        # ── Sentiment (crypto-aware)
+        sentiment = fetch_crypto_sentiment(ticker) if CONFIG.get("asset_class") == "CRYPTO" else fetch_sentiment(ticker)
+
+        # ── Crypto asset label
+        asset_type = "CRYPTOCURRENCY" if CONFIG.get("asset_class") == "CRYPTO" else "EQUITY"
+        asset_label = CRYPTO_TICKER_MAP.get(ticker, (ticker, ticker))[1] if CONFIG.get("asset_class") == "CRYPTO" else ticker
 
         # ── Assemble the Market State Vector
         vector = f\"\"\"
@@ -349,7 +442,11 @@ client = Groq(api_key=os.environ["GROQ_API_KEY"])
 
 SYSTEM_PROMPT = \"\"\"
 You are ATLAS — an Adaptive Tactical LLM Algorithmic System — an elite quantitative
-trading analyst embedded within a live paper-trading execution desk.
+crypto trading analyst embedded within a live paper-trading execution desk.
+
+You specialise in cryptocurrency markets (BTC, ETH, SOL, BNB, AVAX and others).
+Crypto markets trade 24/7, are highly volatile, and are heavily influenced by
+on-chain sentiment, macro risk appetite, and momentum. Factor these in.
 
 Your sole function is to ingest a real-time Market State Vector and produce a
 precise, machine-executable tactical trading decision in strict JSON format.
@@ -357,10 +454,11 @@ precise, machine-executable tactical trading decision in strict JSON format.
 === DECISION FRAMEWORK ===
 Synthesise ALL available signals holistically:
   · Momentum  : RSI zone, MACD crossover, EMA/SMA positioning
-  · Volatility: ATR level, Bollinger Band position
+  · Volatility: ATR level, Bollinger Band position (crypto = wider bands normal)
   · Volume    : Ratio vs 10-day average (conviction gauge)
-  · Sentiment : News polarity score and headline themes
-  · Price     : Day/Week/Month trend direction
+  · Sentiment : Crypto news polarity — regulatory, institutional, on-chain events
+  · Price     : Hour/Day/Week trend direction
+  · Crypto    : 24/7 market — weekend gaps don't exist; liquidity varies by hour
 
 === OUTPUT RULES — CRITICAL ===
 1. Respond with ONLY valid JSON. No preamble. No explanation. No markdown fences.

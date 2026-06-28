@@ -210,8 +210,13 @@ def classify_regime(ticker: str, history_days: int = 60) -> dict:
         description     : str   — human-readable summary for LLM injection
     """
     try:
-        df    = yf.Ticker(ticker).history(period=f"{history_days}d", interval="1d")
-        if df.empty or len(df) < 30:
+        is_crypto = CONFIG.get("asset_class") == "CRYPTO" if "CONFIG" in dir() else False
+        interval  = "1h" if is_crypto else "1d"
+        period    = f"{min(history_days, 29)}d" if is_crypto else f"{history_days}d"
+        min_bars  = 200 if is_crypto else 30   # 1h needs more bars for SMA50
+
+        df    = yf.Ticker(ticker).history(period=period, interval=interval)
+        if df.empty or len(df) < min_bars:
             return _regime_fallback(ticker, "Insufficient data")
 
         close = df["Close"]
@@ -514,8 +519,8 @@ def build_regime_system_addon(regime_data: dict) -> str:
 
 print("✅ Cell 10 — Market Regime Detection Layer loaded.")
 print()
-print("  Running smoke test on AAPL (uses live yfinance data)...")
-_test = classify_regime("AAPL", history_days=60)
+print("  Running smoke test on BTC-USD (uses live yfinance data)...")
+_test = classify_regime("BTC-USD", history_days=29)
 print(f"  Detected regime : {_test['regime']}  (confidence: {_test['confidence']:.0%})")
 print(f"  ADX: {_test['adx']}  |  +DI: {_test['plus_di']}  |  -DI: {_test['minus_di']}")
 print(f"  BB Width: {_test['bb_width']}%  |  ATR Ratio: {_test['atr_ratio']}x")
