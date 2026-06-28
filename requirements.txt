@@ -1,0 +1,5 @@
+yfinance>=0.2.36
+anthropic>=0.25.0
+pandas>=2.0.0
+numpy>=1.26.0
+matplotlib>=3.8.0
