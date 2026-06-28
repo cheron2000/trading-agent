@@ -6,40 +6,40 @@
 ================================================================================
 
   REGIME CLASSIFICATION OVERVIEW
-  ───────────────────────────────
+  -------------------------------
   Each asset is independently classified into one of four regimes every cycle:
 
-  ┌─────────────────┬──────────────────────────────────────────────────────┐
+  ┌-----------------┬------------------------------------------------------┐
   │ Regime          │ Definition                                           │
-  ├─────────────────┼──────────────────────────────────────────────────────┤
+  ├-----------------┼------------------------------------------------------┤
   │ TRENDING_BULL   │ Price above rising SMA20 & SMA50, ADX > 25,         │
   │                 │ MACD histogram positive, RSI 45–75                   │
-  ├─────────────────┼──────────────────────────────────────────────────────┤
+  ├-----------------┼------------------------------------------------------┤
   │ TRENDING_BEAR   │ Price below falling SMA20 & SMA50, ADX > 25,        │
   │                 │ MACD histogram negative, RSI 25–55                   │
-  ├─────────────────┼──────────────────────────────────────────────────────┤
+  ├-----------------┼------------------------------------------------------┤
   │ RANGING         │ ADX < 20, price oscillating inside Bollinger bands,  │
   │                 │ low directional bias, RSI near 50                    │
-  ├─────────────────┼──────────────────────────────────────────────────────┤
+  ├-----------------┼------------------------------------------------------┤
   │ HIGH_VOLATILITY │ ATR > 2× its own 20-day average OR Bollinger Band    │
   │                 │ width > 8% of mid-band price                         │
-  └─────────────────┴──────────────────────────────────────────────────────┘
+  └-----------------┴------------------------------------------------------┘
 
   SCORING APPROACH
-  ────────────────
+  ----------------
   Rather than rigid if/else branches (which fail on edge cases), each regime
   accumulates evidence points from multiple independent signals. The regime
   with the highest score wins. Ties default to RANGING (most conservative).
 
   WHY ADX?
-  ────────
+  --------
   The Average Directional Index measures trend STRENGTH, not direction.
   ADX > 25 = trending market (bull or bear determined by +DI vs -DI).
   ADX < 20 = choppy/ranging market.
   It's computed purely from high/low/close — no new data sources needed.
 
   POSITION SIZE MODULATION
-  ────────────────────────
+  ------------------------
   Regime multipliers are applied ON TOP of the Cell 8 Kelly sizing:
 
     TRENDING_BULL   → 1.00× (full size — high-quality environment)
@@ -48,7 +48,7 @@
     HIGH_VOLATILITY → 0.40× (severely reduced — wide stops eat capital)
 
   STANCE SUPPRESSION
-  ──────────────────
+  ------------------
   Hard rules applied before execution regardless of AI confidence:
 
     TRENDING_BEAR   → BUY signals suppressed → forced to HOLD
@@ -64,9 +64,9 @@ from datetime import datetime, timezone
 from typing import Optional
 
 
-# ─────────────────────────────────────────────────────────────
+# -------------------------------------------------------------
 # REGIME CONSTANTS
-# ─────────────────────────────────────────────────────────────
+# -------------------------------------------------------------
 
 REGIME_TRENDING_BULL   = "TRENDING_BULL"
 REGIME_TRENDING_BEAR   = "TRENDING_BEAR"
@@ -96,9 +96,9 @@ REGIME_SUPPRESSION = {
 }
 
 
-# ─────────────────────────────────────────────────────────────
+# -------------------------------------------------------------
 # TECHNICAL HELPERS (regime-specific)
-# ─────────────────────────────────────────────────────────────
+# -------------------------------------------------------------
 
 def compute_adx(high: pd.Series, low: pd.Series, close: pd.Series,
                 period: int = 14) -> tuple[float, float, float]:
@@ -185,9 +185,9 @@ def slope(series: pd.Series, lookback: int = 5) -> float:
     return round(float(m / avg * 100), 4) if avg != 0 else 0.0   # % per bar
 
 
-# ─────────────────────────────────────────────────────────────
+# -------------------------------------------------------------
 # REGIME CLASSIFIER
-# ─────────────────────────────────────────────────────────────
+# -------------------------------------------------------------
 
 def classify_regime(ticker: str, history_days: int = 60) -> dict:
     """
@@ -223,7 +223,7 @@ def classify_regime(ticker: str, history_days: int = 60) -> dict:
         high  = df["High"]
         low   = df["Low"]
 
-        # ── Compute all signals ───────────────────────────────
+        # -- Compute all signals -------------------------------
         adx, plus_di, minus_di = compute_adx(high, low, close)
         bb_width                = compute_bb_width(close)
         atr_ratio               = compute_atr_ratio(high, low, close)
@@ -251,7 +251,7 @@ def classify_regime(ticker: str, history_days: int = 60) -> dict:
         above_sma20 = cur_price > sma20_last
         above_sma50 = cur_price > sma50_last
 
-        # ── Evidence scoring ──────────────────────────────────
+        # -- Evidence scoring ----------------------------------
         # Each signal contributes 1 point to the matching regime(s).
         # Max possible score = 7 points per regime.
         scores = {
@@ -314,7 +314,7 @@ def classify_regime(ticker: str, history_days: int = 60) -> dict:
         elif bb_width <= 2.5:
             scores[REGIME_RANGING] += 1            # squeeze = ranging
 
-        # ── Determine winner ──────────────────────────────────
+        # -- Determine winner ----------------------------------
         max_score = max(scores.values())
         winners   = [r for r, s in scores.items() if s == max_score]
 
@@ -331,7 +331,7 @@ def classify_regime(ticker: str, history_days: int = 60) -> dict:
         # Regime confidence = winner score / theoretical max (9)
         regime_confidence = round(max_score / 9, 2)
 
-        # ── Human-readable description for LLM injection ──────
+        # -- Human-readable description for LLM injection ------
         description = _build_regime_description(
             regime, adx, plus_di, minus_di, bb_width,
             atr_ratio, sma20_sl, above_sma20, above_sma50,
@@ -369,10 +369,10 @@ def _build_regime_description(
     """Builds the natural-language block injected into the Market State Vector."""
 
     emoji = {
-        REGIME_TRENDING_BULL   : "📈",
-        REGIME_TRENDING_BEAR   : "📉",
-        REGIME_RANGING         : "↔️",
-        REGIME_HIGH_VOLATILITY : "⚡",
+        REGIME_TRENDING_BULL   : "[LONG]",
+        REGIME_TRENDING_BEAR   : "[SHORT]",
+        REGIME_RANGING         : "[RANGE]",
+        REGIME_HIGH_VOLATILITY : "[AUTO-CLOSE]",
     }[regime]
 
     size_mult = REGIME_SIZE_MULTIPLIERS[regime]
@@ -390,17 +390,17 @@ def _build_regime_description(
         f"Evidence Scores : {scores}",
         f"",
         f"REGIME CONSTRAINTS FOR THIS DECISION:",
-        f"  · Position size multiplier : {size_mult:.2f}× (applied to Kelly sizing)",
-        f"  · Confidence threshold adj : +{conf_pen:.2f} (threshold raised in this regime)",
+        f"  - Position size multiplier : {size_mult:.2f}× (applied to Kelly sizing)",
+        f"  - Confidence threshold adj : +{conf_pen:.2f} (threshold raised in this regime)",
     ]
 
     if suppress:
         lines.append(
-            f"  · ⛔ SUPPRESSED STANCE    : {suppress} signals are PROHIBITED "
+            f"  - [BLOCKED] SUPPRESSED STANCE    : {suppress} signals are PROHIBITED "
             f"in {regime} — output HOLD instead"
         )
     else:
-        lines.append(f"  · No stance suppression active")
+        lines.append(f"  - No stance suppression active")
 
     lines += [
         f"",
@@ -460,9 +460,9 @@ def _regime_fallback(ticker: str, reason: str) -> dict:
     }
 
 
-# ─────────────────────────────────────────────────────────────
+# -------------------------------------------------------------
 # REGIME-AWARE SYSTEM PROMPT ADDON
-# ─────────────────────────────────────────────────────────────
+# -------------------------------------------------------------
 # This block is APPENDED to the existing SYSTEM_PROMPT in Cell 4
 # dynamically per-call based on the detected regime.
 
@@ -489,7 +489,7 @@ def build_regime_system_addon(regime_data: dict) -> str:
 
     if suppress:
         lines += [
-            f"⛔ HARD RULE: You MUST NOT output tactical_stance = \"{suppress}\".",
+            f"[BLOCKED] HARD RULE: You MUST NOT output tactical_stance = \"{suppress}\".",
             f"   If your analysis suggests {suppress}, output \"HOLD\" instead.",
             f"   Reason: {suppress} signals are structurally suppressed in {regime}.",
             "",
@@ -497,7 +497,7 @@ def build_regime_system_addon(regime_data: dict) -> str:
 
     if conf_pen > 0:
         lines += [
-            f"⚠️  CONFIDENCE RULE: Raise your internal bar. Only output BUY or SELL",
+            f"[WARNING]  CONFIDENCE RULE: Raise your internal bar. Only output BUY or SELL",
             f"   if your genuine conviction exceeds {0.65 + conf_pen:.2f} (normal threshold",
             f"   {0.65:.2f} + regime penalty {conf_pen:.2f}). When in doubt, output HOLD.",
             "",
@@ -513,11 +513,11 @@ def build_regime_system_addon(regime_data: dict) -> str:
     return "\n".join(lines)
 
 
-# ─────────────────────────────────────────────────────────────
+# -------------------------------------------------------------
 # SMOKE TEST
-# ─────────────────────────────────────────────────────────────
+# -------------------------------------------------------------
 
-print("✅ Cell 10 — Market Regime Detection Layer loaded.")
+print("[OK] Cell 10 — Market Regime Detection Layer loaded.")
 print()
 print("  Running smoke test on BTC-USD (uses live yfinance data)...")
 _test = classify_regime("BTC-USD", history_days=29)
@@ -527,16 +527,16 @@ print(f"  BB Width: {_test['bb_width']}%  |  ATR Ratio: {_test['atr_ratio']}x")
 print(f"  SMA20 Slope: {_test['sma20_slope']:+.4f}%/bar")
 print(f"  Evidence Scores: {_test['regime_score']}")
 if _test['error']:
-    print(f"  ⚠️  Warning: {_test['error']}")
+    print(f"  [WARNING]  Warning: {_test['error']}")
 print()
 print("  Regime description preview (injected into Market State Vector):")
 print()
 print(_test['description'])
 
 
-# ═════════════════════════════════════════════════════════════
+# =============================================================
 # PATCH A — Cell 3: build_market_state_vector()
-# ═════════════════════════════════════════════════════════════
+# =============================================================
 #
 # Add regime data injection into the Market State Vector.
 # The function signature gains an optional `regime_data` param.
@@ -552,7 +552,7 @@ print(_test['description'])
 #
 # REPLACE the return statement with:
 #
-#     # ── Inject regime block if provided ───────────────────
+#     # -- Inject regime block if provided -------------------
 #     regime_block = regime_data.get("description", "") if regime_data else ""
 #
 #     vector = f"""
@@ -570,12 +570,12 @@ print(_test['description'])
 #     def build_market_state_vector(ticker: str, history_days: int = 30,
 #                                   regime_data: dict = None) -> str:
 #
-# ═════════════════════════════════════════════════════════════
+# =============================================================
 
 
-# ═════════════════════════════════════════════════════════════
+# =============================================================
 # PATCH B — Cell 4: get_ai_decision()
-# ═════════════════════════════════════════════════════════════
+# =============================================================
 #
 # Update get_ai_decision() to accept and append the regime system addon.
 #
@@ -608,16 +608,16 @@ print(_test['description'])
 #         ],
 #     )
 #
-# ═════════════════════════════════════════════════════════════
+# =============================================================
 
 
-# ═════════════════════════════════════════════════════════════
+# =============================================================
 # PATCH C — Cell 6: run_trading_loop()
-# ═════════════════════════════════════════════════════════════
+# =============================================================
 #
 # Four targeted changes inside the per-ticker analysis loop.
 #
-# ── CHANGE 1: After "vector = build_market_state_vector(...)" ──
+# -- CHANGE 1: After "vector = build_market_state_vector(...)" --
 #
 # FIND:
 #     vector = build_market_state_vector(
@@ -629,7 +629,7 @@ print(_test['description'])
 #     # Classify regime first
 #     regime_data = classify_regime(ticker, history_days=60)
 #     regime      = regime_data["regime"]
-#     print(f"  🧭 Regime: {regime}  (conf: {regime_data['confidence']:.0%}  "
+#     print(f"  [REGIME] Regime: {regime}  (conf: {regime_data['confidence']:.0%}  "
 #           f"ADX: {regime_data['adx']}  BB Width: {regime_data['bb_width']}%)")
 #
 #     vector = build_market_state_vector(
@@ -638,7 +638,7 @@ print(_test['description'])
 #         regime_data=regime_data,           # ← inject regime into vector
 #     )
 #
-# ── CHANGE 2: Pass regime_data to get_ai_decision() ───────────
+# -- CHANGE 2: Pass regime_data to get_ai_decision() -----------
 #
 # FIND:
 #     result = get_ai_decision(vector, ticker, memory_block=memory_block)
@@ -650,24 +650,24 @@ print(_test['description'])
 #         regime_data=regime_data,           # ← new param
 #     )
 #
-# ── CHANGE 3: Stance suppression check ────────────────────────
+# -- CHANGE 3: Stance suppression check ------------------------
 #
 # FIND (after decision is parsed, before open_position call):
 #     if stance in ("BUY", "SELL") and confidence >= conf_threshold:
 #
 # REPLACE WITH:
-#     # ── Regime stance suppression ─────────────────────────
+#     # -- Regime stance suppression -------------------------
 #     suppressed_stance = REGIME_SUPPRESSION.get(regime)
 #     if suppressed_stance and stance == suppressed_stance:
-#         print(f"  ⛔ [{regime}] {stance} stance suppressed → forced HOLD.")
+#         print(f"  [BLOCKED] [{regime}] {stance} stance suppressed → forced HOLD.")
 #         stance = "HOLD"
 #
-#     # ── Regime confidence threshold adjustment ─────────────
+#     # -- Regime confidence threshold adjustment -------------
 #     regime_conf_threshold = conf_threshold + REGIME_CONF_PENALTY.get(regime, 0)
 #
 #     if stance in ("BUY", "SELL") and confidence >= regime_conf_threshold:
 #
-# ── CHANGE 4: Apply regime size multiplier inside open_position ─
+# -- CHANGE 4: Apply regime size multiplier inside open_position -
 #
 # FIND (inside compute_position_size call or just before open_position):
 #     portfolio.open_position(
@@ -698,9 +698,9 @@ print(_test['description'])
 #         current_prices  = current_prices,
 #     )
 #
-# ═════════════════════════════════════════════════════════════
+# =============================================================
 PATCH_C_SUMMARY = """
-✅ Patch C summary — Cell 6 changes:
+[OK] Patch C summary — Cell 6 changes:
   1. classify_regime() called per-ticker before build_market_state_vector()
   2. regime_data passed to get_ai_decision() → dynamic system prompt addon
   3. Stance suppression: BUY blocked in TRENDING_BEAR, SELL in TRENDING_BULL

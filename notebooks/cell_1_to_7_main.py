@@ -1,7 +1,7 @@
 """
 ================================================================================
   ADAPTIVE AI TRADING AGENT — GOOGLE COLAB MASTER NOTEBOOK
-  Phases 1 → 4 | Real-Time Data · LLM Decisions · Paper Trading
+  Phases 1 → 4 | Real-Time Data - LLM Decisions - Paper Trading
 ================================================================================
   INSTRUCTIONS (run each cell block in order inside Google Colab):
   1. Paste each CELL into a separate Colab code cell.
@@ -26,7 +26,7 @@ for pkg in ["yfinance", "groq", "pandas", "numpy"]:
     if importlib.util.find_spec(pkg) is None:
         raise ImportError(f"Package '{pkg}' failed to install. Check your runtime.")
 
-print("✅ All dependencies installed successfully.")
+print("[DONE] All dependencies installed successfully.")
 """
 
 
@@ -41,11 +41,11 @@ CELL_2 = """
 import os
 from getpass import getpass
 
-# ── API KEY ──────────────────────────────────────────────────
+# -- API KEY --------------------------------------------------
 GROQ_API_KEY = getpass("🔑 Enter your Groq API Key (starts with gsk_): ")
 os.environ["GROQ_API_KEY"] = GROQ_API_KEY
 
-# ── AGENT CONFIGURATION ──────────────────────────────────────
+# -- AGENT CONFIGURATION --------------------------------------
 CONFIG = {
     # Assets to trade (Yahoo Finance tickers)
     "watchlist": ["BTC-USD", "ETH-USD", "SOL-USD", "BNB-USD", "AVAX-USD"],
@@ -78,7 +78,7 @@ CONFIG = {
     "min_trade_notional": 10.0,        # min $10 per trade (crypto is divisible)
 }
 
-print("✅ Configuration loaded.")
+print("[DONE] Configuration loaded.")
 print(f"   Watchlist  : {CONFIG['watchlist']}")
 print(f"   Capital    : ${CONFIG['starting_capital']:,.2f}")
 print(f"   Max Risk   : {CONFIG['max_position_pct']*100:.0f}% per trade")
@@ -107,7 +107,7 @@ import re
 from datetime import datetime, timezone
 
 
-# ── TECHNICAL INDICATOR HELPERS ───────────────────────────────
+# -- TECHNICAL INDICATOR HELPERS -------------------------------
 
 def compute_rsi(series: pd.Series, period: int = 14) -> float:
     \"\"\"Relative Strength Index — momentum oscillator (0–100).\"\"\"
@@ -163,7 +163,7 @@ def compute_vwap(df: pd.DataFrame) -> float:
     return round(float(vwap.iloc[-1]), 2)
 
 
-# ── SENTIMENT PIPELINE ─────────────────────────────────────────
+# -- SENTIMENT PIPELINE -----------------------------------------
 
 def fetch_sentiment(ticker: str, max_headlines: int = 5) -> dict:
     \"\"\"
@@ -219,9 +219,9 @@ def fetch_sentiment(ticker: str, max_headlines: int = 5) -> dict:
     }
 
 
-# ── MARKET STATE VECTOR BUILDER ───────────────────────────────
+# -- MARKET STATE VECTOR BUILDER -------------------------------
 
-# ── CRYPTO SENTIMENT (CoinGecko RSS + crypto keyword lists) ──
+# -- CRYPTO SENTIMENT (CoinGecko RSS + crypto keyword lists) --
 
 CRYPTO_TICKER_MAP = {
     "BTC-USD"  : ("bitcoin",  "BTC"),
@@ -324,14 +324,14 @@ def build_market_state_vector(ticker: str, history_days: int = 30) -> str:
         high   = df["High"]
         low    = df["Low"]
 
-        # ── Price levels
+        # -- Price levels
         current_price  = round(float(close.iloc[-1]), 2)
         prev_close     = round(float(close.iloc[-2]), 2)
         day_change_pct = round(((current_price - prev_close) / prev_close) * 100, 2)
         week_change    = round(((current_price - float(close.iloc[-6])) / float(close.iloc[-6])) * 100, 2)
         month_change   = round(((current_price - float(close.iloc[0]))  / float(close.iloc[0]))  * 100, 2)
 
-        # ── Technical indicators
+        # -- Technical indicators
         rsi                    = compute_rsi(close)
         macd, macd_sig, macd_h = compute_macd(close)
         bb_up, bb_mid, bb_low  = compute_bollinger(close)
@@ -342,12 +342,12 @@ def build_market_state_vector(ticker: str, history_days: int = 30) -> str:
         sma_50                 = round(float(sma_50_series.iloc[-1]), 2) if not sma_50_series.dropna().empty else None
         ema_9                  = round(float(close.ewm(span=9).mean().iloc[-1]), 2)
 
-        # ── Volume analysis
+        # -- Volume analysis
         avg_vol_10d   = round(float(volume.rolling(10).mean().iloc[-1]))
         current_vol   = round(float(volume.iloc[-1]))
         vol_ratio     = round(current_vol / avg_vol_10d, 2) if avg_vol_10d > 0 else 1.0
 
-        # ── Market cap tier
+        # -- Market cap tier
         try:
             mkt_cap = info.market_cap
             if   mkt_cap >= 200e9: cap_tier = "Mega-cap (>$200B)"
@@ -357,7 +357,7 @@ def build_market_state_vector(ticker: str, history_days: int = 30) -> str:
         except Exception:
             cap_tier = "Unknown"
 
-        # ── Momentum signals
+        # -- Momentum signals
         price_vs_sma20  = "ABOVE" if current_price > sma_20 else "BELOW"
         price_vs_vwap   = "ABOVE" if current_price > vwap   else "BELOW"
         bb_position     = (
@@ -372,14 +372,14 @@ def build_market_state_vector(ticker: str, history_days: int = 30) -> str:
             "NEUTRAL"
         )
 
-        # ── Sentiment (crypto-aware)
+        # -- Sentiment (crypto-aware)
         sentiment = fetch_crypto_sentiment(ticker) if CONFIG.get("asset_class") == "CRYPTO" else fetch_sentiment(ticker)
 
-        # ── Crypto asset label
+        # -- Crypto asset label
         asset_type = "CRYPTOCURRENCY" if CONFIG.get("asset_class") == "CRYPTO" else "EQUITY"
         asset_label = CRYPTO_TICKER_MAP.get(ticker, (ticker, ticker))[1] if CONFIG.get("asset_class") == "CRYPTO" else ticker
 
-        # ── Assemble the Market State Vector
+        # -- Assemble the Market State Vector
         vector = f\"\"\"
 === LIVE MARKET STATE VECTOR ===
 Timestamp  : {now}
@@ -411,7 +411,7 @@ Volume Ratio   : {vol_ratio}x  {"[HIGH VOLUME — conviction signal]" if vol_rat
 --- SENTIMENT ANALYSIS ---
 Sentiment      : {sentiment['sentiment_label']}  (score: {sentiment['sentiment_score']})
 Recent Headlines:
-{chr(10).join(f"  · {h}" for h in sentiment['headlines'])}
+{chr(10).join(f"  - {h}" for h in sentiment['headlines'])}
 =================================
 \"\"\"
         return vector.strip()
@@ -420,7 +420,7 @@ Recent Headlines:
         return f"[ERROR] Failed to build market state vector for {ticker}: {e}"
 
 
-print("✅ Phase 1 & 2 — Market Data Pipeline loaded.")
+print("[DONE] Phase 1 & 2 — Market Data Pipeline loaded.")
 print("   Test with: print(build_market_state_vector('AAPL'))")
 """
 
@@ -453,12 +453,12 @@ precise, machine-executable tactical trading decision in strict JSON format.
 
 === DECISION FRAMEWORK ===
 Synthesise ALL available signals holistically:
-  · Momentum  : RSI zone, MACD crossover, EMA/SMA positioning
-  · Volatility: ATR level, Bollinger Band position (crypto = wider bands normal)
-  · Volume    : Ratio vs 10-day average (conviction gauge)
-  · Sentiment : Crypto news polarity — regulatory, institutional, on-chain events
-  · Price     : Hour/Day/Week trend direction
-  · Crypto    : 24/7 market — weekend gaps don't exist; liquidity varies by hour
+  - Momentum  : RSI zone, MACD crossover, EMA/SMA positioning
+  - Volatility: ATR level, Bollinger Band position (crypto = wider bands normal)
+  - Volume    : Ratio vs 10-day average (conviction gauge)
+  - Sentiment : Crypto news polarity — regulatory, institutional, on-chain events
+  - Price     : Hour/Day/Week trend direction
+  - Crypto    : 24/7 market — weekend gaps don't exist; liquidity varies by hour
 
 === OUTPUT RULES — CRITICAL ===
 1. Respond with ONLY valid JSON. No preamble. No explanation. No markdown fences.
@@ -481,10 +481,10 @@ Synthesise ALL available signals holistically:
   }
 }
 3. confidence_score must reflect genuine signal convergence:
-   · 0.85–1.0 : Strong multi-factor confluence
-   · 0.65–0.84: Moderate conviction, clear primary signal
-   · 0.40–0.64: Mixed signals, lean toward HOLD
-   · 0.00–0.39: High uncertainty, HOLD mandatory
+   - 0.85–1.0 : Strong multi-factor confluence
+   - 0.65–0.84: Moderate conviction, clear primary signal
+   - 0.40–0.64: Mixed signals, lean toward HOLD
+   - 0.00–0.39: High uncertainty, HOLD mandatory
 4. NEVER fabricate data. Base decisions solely on the vector provided.
 5. If signals are genuinely conflicting, output HOLD with low confidence.
 \"\"\"
@@ -544,7 +544,7 @@ Respond with JSON only.
         return {"status": "error", "error": str(e), "raw": ""}
 
 
-print("✅ Phase 3 — LLM Decision Engine (ATLAS) loaded.")
+print("[DONE] Phase 3 — LLM Decision Engine (ATLAS) loaded.")
 """
 
 
@@ -561,7 +561,7 @@ from typing import Optional
 import uuid
 
 
-# ── DATA STRUCTURES ───────────────────────────────────────────
+# -- DATA STRUCTURES -------------------------------------------
 
 @dataclass
 class Position:
@@ -612,7 +612,7 @@ class PaperPortfolio:
         self.cycle_count        = 0
         self.created_at         = datetime.now(timezone.utc).isoformat()
 
-    # ── PORTFOLIO VALUE ────────────────────────────────────────
+    # -- PORTFOLIO VALUE ----------------------------------------
 
     def get_portfolio_value(self, current_prices: dict[str, float]) -> float:
         \"\"\"Cash + mark-to-market value of all open positions.\"\"\"
@@ -627,7 +627,7 @@ class PaperPortfolio:
                 position_value += pos.notional_value + pnl
         return self.cash + position_value
 
-    # ── OPEN A POSITION ────────────────────────────────────────
+    # -- OPEN A POSITION ----------------------------------------
 
     def open_position(
         self,
@@ -641,9 +641,9 @@ class PaperPortfolio:
     ) -> Optional[Position]:
         \"\"\"
         Opens a new position if:
-        · No existing open position on this ticker.
-        · Sufficient cash available.
-        · Stance is BUY or SELL (not HOLD).
+        - No existing open position on this ticker.
+        - Sufficient cash available.
+        - Stance is BUY or SELL (not HOLD).
         \"\"\"
         if stance == "HOLD":
             return None
@@ -694,7 +694,7 @@ class PaperPortfolio:
         )
         return pos
 
-    # ── CLOSE A POSITION ────────────────────────────────────────
+    # -- CLOSE A POSITION ----------------------------------------
 
     def close_position(
         self,
@@ -737,14 +737,14 @@ class PaperPortfolio:
         )
         self.closed_trades.append(trade)
 
-        emoji = "✅" if outcome == "WIN" else ("❌" if outcome == "LOSS" else "➖")
+        emoji = "[DONE]" if outcome == "WIN" else ("[FAIL]" if outcome == "LOSS" else "[FLAT]")
         self._log(
             f"[CLOSE] {emoji} {ticker} @ ${exit_price:.2f} | PnL: ${pnl_usd:+,.2f} "
             f"({pnl_pct:+.2f}%) | Reason: {close_reason}"
         )
         return trade
 
-    # ── STOP/TAKE-PROFIT CHECKER ─────────────────────────────
+    # -- STOP/TAKE-PROFIT CHECKER -----------------------------
 
     def check_exit_conditions(self, current_prices: dict[str, float]) -> list[ClosedTrade]:
         \"\"\"Auto-closes positions that hit stop-loss or take-profit.\"\"\"
@@ -766,7 +766,7 @@ class PaperPortfolio:
                     exits.append(self.close_position(ticker, price, "TAKE_PROFIT"))
         return [t for t in exits if t is not None]
 
-    # ── PERFORMANCE METRICS ────────────────────────────────────
+    # -- PERFORMANCE METRICS ------------------------------------
 
     def get_performance_metrics(self, current_prices: dict[str, float]) -> dict:
         \"\"\"Returns a comprehensive snapshot of portfolio performance.\"\"\"
@@ -814,21 +814,21 @@ class PaperPortfolio:
             "cycles_completed"  : self.cycle_count,
         }
 
-    # ── DISPLAY HELPERS ────────────────────────────────────────
+    # -- DISPLAY HELPERS ----------------------------------------
 
     def print_dashboard(self, current_prices: dict[str, float]):
         \"\"\"Prints a formatted portfolio dashboard to the console.\"\"\"
         m  = self.get_performance_metrics(current_prices)
         ts = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
 
-        print("\\n" + "═"*62)
-        print(f"  📊  ATLAS PAPER TRADING DASHBOARD  ·  {ts}")
-        print("═"*62)
+        print("\\n" + "="*62)
+        print(f"  [DASHBOARD]  ATLAS PAPER TRADING DASHBOARD  -  {ts}")
+        print("="*62)
         print(f"  Portfolio Value   : ${m['portfolio_value']:>12,.2f}")
         print(f"  Cash Available    : ${m['cash_available']:>12,.2f}")
         print(f"  Open Positions    : {m['open_positions']:>12}")
         print(f"  Total PnL         : ${m['total_pnl_usd']:>+12,.2f}  ({m['total_return_pct']:+.2f}%)")
-        print("─"*62)
+        print("-"*62)
         print(f"  Completed Trades  : {m['total_trades']:>12}")
         print(f"  Win Rate          : {m['win_rate_pct']:>11.1f}%")
         print(f"  Avg Win           : ${m['avg_win_usd']:>+12,.2f}")
@@ -836,7 +836,7 @@ class PaperPortfolio:
         print(f"  Profit Factor     : {m['profit_factor']:>12.2f}")
         print(f"  Max Drawdown      : {m['max_drawdown_pct']:>11.2f}%")
         print(f"  Cycles Completed  : {m['cycles_completed']:>12}")
-        print("─"*62)
+        print("-"*62)
 
         if self.open_positions:
             print("  OPEN POSITIONS:")
@@ -846,7 +846,7 @@ class PaperPortfolio:
                     unrealised = (cur - pos.entry_price) * pos.shares
                 else:
                     unrealised = (pos.entry_price - cur) * pos.shares
-                flag = "📈" if unrealised >= 0 else "📉"
+                flag = "[LONG]" if unrealised >= 0 else "[SHORT]"
                 print(
                     f"    {flag} [{pos.stance}] {ticker} | Entry: ${pos.entry_price:.2f} "
                     f"| Now: ${cur:.2f} | Unreal PnL: ${unrealised:+,.2f} "
@@ -855,7 +855,7 @@ class PaperPortfolio:
         else:
             print("  No open positions.")
 
-        print("═"*62 + "\\n")
+        print("="*62 + "\\n")
 
     def _log(self, msg: str):
         ts  = datetime.now(timezone.utc).strftime("%H:%M:%S")
@@ -864,7 +864,7 @@ class PaperPortfolio:
         print(entry)
 
 
-print("✅ Phase 4 — Paper Trading Portfolio Engine loaded.")
+print("[DONE] Phase 4 — Paper Trading Portfolio Engine loaded.")
 """
 
 
@@ -879,7 +879,7 @@ This is the main execution loop — runs everything end to end.
 CELL_6 = """
 import time
 
-# ── STOP/TAKE-PROFIT DEFAULTS (% from entry) ──────────────────
+# -- STOP/TAKE-PROFIT DEFAULTS (% from entry) ------------------
 # These are fallbacks; the AI's execution_parameters take precedence
 # where they contain parseable numeric levels.
 DEFAULT_STOP_LOSS_PCT    = 2.5    # 2.5% below entry
@@ -929,10 +929,10 @@ def run_trading_loop():
     cycle             = 0
     performance_log   = []   # stores metrics snapshot each cycle
 
-    print("\\n" + "█"*62)
-    print("  🚀  ATLAS ADAPTIVE AI TRADING AGENT — LIVE (PAPER)")
+    print("\\n" + "="*62)
+    print("  [START]  ATLAS ADAPTIVE AI TRADING AGENT — LIVE (PAPER)")
     print(f"  Capital: ${CONFIG['starting_capital']:,.2f}  |  Watchlist: {watchlist}")
-    print("█"*62 + "\\n")
+    print("="*62 + "\\n")
 
     try:
         while True:
@@ -940,11 +940,11 @@ def run_trading_loop():
             portfolio.cycle_count = cycle
             cycle_start = datetime.now(timezone.utc)
 
-            print(f"\\n{'━'*62}")
-            print(f"  ⏱  CYCLE {cycle}  |  {cycle_start.strftime('%Y-%m-%d %H:%M:%S UTC')}")
-            print(f"{'━'*62}")
+            print(f"\\n{'-'*62}")
+            print(f"  [CYCLE]  CYCLE {cycle}  |  {cycle_start.strftime('%Y-%m-%d %H:%M:%S UTC')}")
+            print(f"{'-'*62}")
 
-            # ── STEP 1: Fetch current prices for all watchlist assets ──
+            # -- STEP 1: Fetch current prices for all watchlist assets --
             current_prices = {}
             for ticker in watchlist:
                 try:
@@ -954,16 +954,16 @@ def run_trading_loop():
                 except Exception:
                     pass
 
-            print(f"  💰 Current prices: {current_prices}")
+            print(f"  [PRICES] Current prices: {current_prices}")
 
-            # ── STEP 2: Check stop-loss / take-profit exits ────────────
+            # -- STEP 2: Check stop-loss / take-profit exits ------------
             exits = portfolio.check_exit_conditions(current_prices)
             if exits:
-                print(f"  ⚡ {len(exits)} position(s) auto-closed by SL/TP rules.")
+                print(f"  [AUTO-CLOSE] {len(exits)} position(s) auto-closed by SL/TP rules.")
 
-            # ── STEP 3: Iterate watchlist — build vector → get decision ─
+            # -- STEP 3: Iterate watchlist — build vector → get decision -
             for ticker in watchlist:
-                print(f"\\n  🔍 Analysing {ticker}...")
+                print(f"\\n  [SCAN] Analysing {ticker}...")
 
                 # Build Market State Vector
                 vector = build_market_state_vector(
@@ -972,14 +972,14 @@ def run_trading_loop():
                 )
 
                 if vector.startswith("[ERROR]"):
-                    print(f"  ⚠️  {vector}")
+                    print(f"  [WARNING]  {vector}")
                     continue
 
                 # Get ATLAS decision
                 result = get_ai_decision(vector, ticker)
 
                 if result["status"] != "ok":
-                    print(f"  ⚠️  LLM error for {ticker}: {result.get('error')}")
+                    print(f"  [WARNING]  LLM error for {ticker}: {result.get('error')}")
                     continue
 
                 decision   = result["decision"]
@@ -989,7 +989,7 @@ def run_trading_loop():
                 exec_params = decision.get("execution_parameters", {})
                 signals    = decision.get("signal_breakdown", {})
 
-                print(f"  🤖 ATLAS Decision: {stance} | Confidence: {confidence:.2f}")
+                print(f"  [ATLAS] ATLAS Decision: {stance} | Confidence: {confidence:.2f}")
                 print(f"     Momentum: {signals.get('momentum_signal','?')} | "
                       f"Volatility: {signals.get('volatility_signal','?')} | "
                       f"Volume: {signals.get('volume_signal','?')} | "
@@ -998,18 +998,18 @@ def run_trading_loop():
 
                 cur_price = current_prices.get(ticker)
                 if not cur_price:
-                    print(f"  ⚠️  No live price for {ticker} — skipping execution.")
+                    print(f"  [WARNING]  No live price for {ticker} — skipping execution.")
                     continue
 
-                # ── STEP 4a: SIGNAL REVERSAL — close opposite position ──
+                # -- STEP 4a: SIGNAL REVERSAL — close opposite position --
                 if ticker in portfolio.open_positions:
                     existing = portfolio.open_positions[ticker]
                     if (existing.stance == "BUY"  and stance == "SELL") or \
                        (existing.stance == "SELL" and stance == "BUY"):
-                        print(f"  🔄 Signal reversal detected. Closing {existing.stance} position.")
+                        print(f"  [REVERSAL] Signal reversal detected. Closing {existing.stance} position.")
                         portfolio.close_position(ticker, cur_price, "SIGNAL_REVERSAL")
 
-                # ── STEP 4b: OPEN NEW POSITION ─────────────────────────
+                # -- STEP 4b: OPEN NEW POSITION -------------------------
                 if stance in ("BUY", "SELL") and confidence >= conf_threshold:
                     if ticker not in portfolio.open_positions:
                         # Parse stop/take-profit from AI output
@@ -1051,14 +1051,14 @@ def run_trading_loop():
                         )
                 else:
                     if stance == "HOLD":
-                        print(f"  ⏸  HOLD signal — no action taken for {ticker}.")
+                        print(f"  [SKIP]  HOLD signal — no action taken for {ticker}.")
                     elif confidence < conf_threshold:
                         print(
-                            f"  ⏸  Confidence {confidence:.2f} below threshold "
+                            f"  [SKIP]  Confidence {confidence:.2f} below threshold "
                             f"{conf_threshold} — no trade on {ticker}."
                         )
 
-            # ── STEP 5: Dashboard ──────────────────────────────────────
+            # -- STEP 5: Dashboard --------------------------------------
             portfolio.print_dashboard(current_prices)
 
             # Save performance snapshot
@@ -1067,24 +1067,24 @@ def run_trading_loop():
             snapshot["timestamp"] = cycle_start.isoformat()
             performance_log.append(snapshot)
 
-            # ── CHECK CYCLE LIMIT ──────────────────────────────────────
+            # -- CHECK CYCLE LIMIT --------------------------------------
             if max_cycles and cycle >= max_cycles:
-                print(f"\\n  ✅ Reached max_cycles={max_cycles}. Ending session.")
+                print(f"\\n  [DONE] Reached max_cycles={max_cycles}. Ending session.")
                 break
 
-            # ── WAIT ───────────────────────────────────────────────────
+            # -- WAIT ---------------------------------------------------
             elapsed = (datetime.now(timezone.utc) - cycle_start).total_seconds()
             sleep_t = max(0, poll_interval - elapsed)
-            print(f"  ⏳ Next cycle in {sleep_t:.0f}s...")
+            print(f"  [WAIT] Next cycle in {sleep_t:.0f}s...")
             time.sleep(sleep_t)
 
     except KeyboardInterrupt:
         print("\\n  🛑 Trading session interrupted by user.")
 
-    # ── FINAL SESSION REPORT ───────────────────────────────────
-    print("\\n" + "█"*62)
-    print("  📋  FINAL SESSION REPORT")
-    print("█"*62)
+    # -- FINAL SESSION REPORT -----------------------------------
+    print("\\n" + "="*62)
+    print("  [REPORT]  FINAL SESSION REPORT")
+    print("="*62)
 
     final = portfolio.get_performance_metrics(current_prices)
     print(f"  Starting Capital  : ${final['starting_capital']:,.2f}")
@@ -1098,7 +1098,7 @@ def run_trading_loop():
     if portfolio.closed_trades:
         print("\\n  TRADE HISTORY:")
         for t in portfolio.closed_trades:
-            icon = "✅" if t.outcome == "WIN" else "❌"
+            icon = "[DONE]" if t.outcome == "WIN" else "[FAIL]"
             print(
                 f"    {icon} [{t.stance}] {t.ticker} | "
                 f"Entry: ${t.entry_price:.2f} → Exit: ${t.exit_price:.2f} | "
@@ -1109,11 +1109,11 @@ def run_trading_loop():
     for entry in portfolio.trade_log:
         print(f"    {entry}")
 
-    print("█"*62)
+    print("="*62)
     return portfolio, performance_log
 
 
-# ── RUN IT ────────────────────────────────────────────────────
+# -- RUN IT ----------------------------------------------------
 portfolio, perf_log = run_trading_loop()
 """
 
@@ -1177,7 +1177,7 @@ if perf_log:
     plt.savefig("atlas_performance.png", dpi=150, bbox_inches="tight",
                 facecolor=fig.get_facecolor())
     plt.show()
-    print("\\n  📊 Chart saved as atlas_performance.png")
+    print("\\n  [DASHBOARD] Chart saved as atlas_performance.png")
 else:
     print("No performance data to chart yet. Run Cell 6 first.")
 """
@@ -1189,9 +1189,9 @@ else:
 
 if __name__ == "__main__":
     print("""
-╔══════════════════════════════════════════════════════════════╗
+╔==============================================================╗
 ║   ADAPTIVE AI TRADING AGENT — COLAB SETUP GUIDE             ║
-╠══════════════════════════════════════════════════════════════╣
+╠==============================================================╣
 ║                                                              ║
 ║  Open Google Colab and create 7 cells.                       ║
 ║  Paste the content of each CELL_N variable above into        ║
@@ -1207,5 +1207,5 @@ if __name__ == "__main__":
 ║                                                              ║
 ║  To stop early: press the ■ STOP button in Colab, or use     ║
 ║  Runtime → Interrupt execution.                              ║
-╚══════════════════════════════════════════════════════════════╝
+╚==============================================================╝
 """)

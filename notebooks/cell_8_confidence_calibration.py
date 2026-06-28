@@ -13,12 +13,12 @@
 
 import numpy as np
 
-# ─────────────────────────────────────────────────────────────
+# -------------------------------------------------------------
 # THE MATH EXPLAINED
-# ─────────────────────────────────────────────────────────────
+# -------------------------------------------------------------
 #
 # STEP 1 — BASE ALLOCATION via Fractional Kelly Criterion
-# ───────────────────────────────────────────────────────
+# -------------------------------------------------------
 # Full Kelly: f* = (p * b - q) / b
 #   where p  = estimated win probability (mapped from confidence)
 #         q  = 1 - p (estimated loss probability)
@@ -36,16 +36,16 @@ import numpy as np
 #   conf 0.95 → p ≈ 0.78  (very strong edge)
 #
 # STEP 2 — DRAWDOWN SCALING FACTOR
-# ──────────────────────────────────
+# ----------------------------------
 # As the portfolio bleeds down from its peak, we apply a
 # multiplicative "throttle" that shrinks position size:
 #
 #   dd_factor = max(0.2,  1 - (current_drawdown_pct / max_dd_ceiling) ^ 1.5)
 #
-#   · At 0% drawdown   → factor = 1.00  (full size)
-#   · At 5% drawdown   → factor ≈ 0.75
-#   · At 10% drawdown  → factor ≈ 0.44
-#   · At 15% drawdown  → factor = 0.20  (floor — never goes below 20%)
+#   - At 0% drawdown   → factor = 1.00  (full size)
+#   - At 5% drawdown   → factor ≈ 0.75
+#   - At 10% drawdown  → factor ≈ 0.44
+#   - At 15% drawdown  → factor = 0.20  (floor — never goes below 20%)
 #   max_dd_ceiling = 15% by default (tune via CONFIG)
 #
 # The exponent 1.5 makes the curve convex — gentle at first, then
@@ -54,16 +54,16 @@ import numpy as np
 # during a real drawdown regime.
 #
 # STEP 3 — FINAL POSITION SIZE
-# ──────────────────────────────
+# ------------------------------
 # final_pct = clip(kelly_fraction * dd_factor, min_pct, max_pct)
 #
 # Hard bounds prevent any single trade from exceeding the
 # configured maximum regardless of how confident ATLAS is.
 #
-# ─────────────────────────────────────────────────────────────
+# -------------------------------------------------------------
 
 
-# ── TUNABLE PARAMETERS (add these to CONFIG in Cell 2 if desired) ──
+# -- TUNABLE PARAMETERS (add these to CONFIG in Cell 2 if desired) --
 CALIBRATION_CONFIG = {
     "kelly_fraction"      : 0.25,    # Quarter-Kelly multiplier (0.1–0.5)
     "min_position_pct"    : 0.02,    # Floor: never risk less than 2% per trade
@@ -187,7 +187,7 @@ def compute_position_size(
             "sizing_tier"  : "REJECTED — below confidence floor",
         }
 
-    # ── Step 1: Kelly base fraction ───────────────────────────
+    # -- Step 1: Kelly base fraction ---------------------------
     reward_risk = (take_profit_pct / stop_loss_pct) if stop_loss_pct > 0 else cal_cfg["reward_risk_ratio"]
     kelly_raw   = compute_kelly_fraction(
         confidence,
@@ -195,7 +195,7 @@ def compute_position_size(
         cal_cfg["kelly_fraction"],
     )
 
-    # ── Step 2: Drawdown throttle ─────────────────────────────
+    # -- Step 2: Drawdown throttle -----------------------------
     dd_factor, dd_pct = compute_drawdown_factor(
         current_portfolio_value,
         peak_portfolio_value,
@@ -204,7 +204,7 @@ def compute_position_size(
         cal_cfg["dd_floor_factor"],
     )
 
-    # ── Step 3: Final position % with hard bounds ─────────────
+    # -- Step 3: Final position % with hard bounds -------------
     raw_pct      = kelly_raw * dd_factor
     position_pct = float(np.clip(
         raw_pct,
@@ -215,7 +215,7 @@ def compute_position_size(
     notional_usd = round(current_portfolio_value * position_pct, 2)
     win_prob     = confidence_to_win_prob(confidence)
 
-    # ── Tier label ────────────────────────────────────────────
+    # -- Tier label --------------------------------------------
     if position_pct >= 0.08:
         tier = "FULL  (high conviction)"
     elif position_pct >= 0.05:
@@ -236,9 +236,9 @@ def compute_position_size(
     }
 
 
-# ─────────────────────────────────────────────────────────────
+# -------------------------------------------------------------
 # PATCH: Add peak tracking to PaperPortfolio
-# ─────────────────────────────────────────────────────────────
+# -------------------------------------------------------------
 # Run this block to monkey-patch the existing PaperPortfolio
 # class with peak tracking (needed by the drawdown calculator).
 
@@ -273,17 +273,17 @@ def _patched_open_position(
         self._log(f"[SKIP] Already have open position in {ticker}.")
         return None
 
-    # ── Live portfolio value for drawdown calculation ─────────
+    # -- Live portfolio value for drawdown calculation ---------
     prices_for_valuation = current_prices or {ticker: current_price}
     current_total_value  = self.get_portfolio_value(prices_for_valuation)
 
-    # ── Update peak ───────────────────────────────────────────
+    # -- Update peak -------------------------------------------
     self.peak_portfolio_value = max(
         self.peak_portfolio_value,
         current_total_value,
     )
 
-    # ── Calibrated position size ──────────────────────────────
+    # -- Calibrated position size ------------------------------
     sizing = compute_position_size(
         confidence             = confidence,
         current_portfolio_value= current_total_value,
@@ -307,7 +307,7 @@ def _patched_open_position(
 
     shares = notional / current_price
 
-    # ── Set SL / TP price levels ──────────────────────────────
+    # -- Set SL / TP price levels ------------------------------
     if stance == "BUY":
         stop_loss   = round(current_price * (1 - stop_loss_pct   / 100), 2)
         take_profit = round(current_price * (1 + take_profit_pct / 100), 2)
@@ -346,11 +346,11 @@ def _patched_open_position(
 # Patch the class method
 PaperPortfolio.open_position = _patched_open_position
 
-print("✅ Cell 8 — Confidence Calibration Layer loaded & PaperPortfolio patched.")
+print("[OK] Cell 8 — Confidence Calibration Layer loaded & PaperPortfolio patched.")
 print()
 print("  Sizing preview across confidence levels (no drawdown, 2:1 reward/risk):")
 print(f"  {'Confidence':>12} | {'Win Prob':>9} | {'Kelly Raw':>10} | {'Final Alloc':>12} | Tier")
-print("  " + "─"*75)
+print("  " + "-"*75)
 for conf in [0.65, 0.70, 0.75, 0.80, 0.85, 0.90, 0.95]:
     s = compute_position_size(
         confidence              = conf,
@@ -368,7 +368,7 @@ for conf in [0.65, 0.70, 0.75, 0.80, 0.85, 0.90, 0.95]:
 print()
 print("  Drawdown throttle preview (confidence=0.80, 2:1 R/R):")
 print(f"  {'Drawdown':>10} | {'DD Factor':>10} | {'Final Alloc':>12}")
-print("  " + "─"*40)
+print("  " + "-"*40)
 for dd in [0, 3, 5, 8, 10, 12, 15]:
     fake_current = 100_000 * (1 - dd / 100)
     s = compute_position_size(
@@ -381,9 +381,9 @@ for dd in [0, 3, 5, 8, 10, 12, 15]:
     print(f"  {dd:>9.0f}% | {s['dd_factor']:>10.3f} | {s['position_pct']*100:>11.1f}%")
 
 
-# ─────────────────────────────────────────────────────────────
+# -------------------------------------------------------------
 # CELL 6 REPLACEMENT — open_position() call
-# ─────────────────────────────────────────────────────────────
+# -------------------------------------------------------------
 #
 # In Cell 6, find this block:
 #
@@ -412,4 +412,4 @@ for dd in [0, 3, 5, 8, 10, 12, 15]:
 #
 # That single added argument is all that's needed. The patched method
 # handles everything else automatically.
-# ─────────────────────────────────────────────────────────────
+# -------------------------------------------------------------

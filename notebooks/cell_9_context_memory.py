@@ -6,30 +6,30 @@
 ================================================================================
 
   ARCHITECTURE OVERVIEW
-  ─────────────────────
+  ---------------------
   The memory pipeline has three stages:
 
-  ┌──────────────────────────────────────────────────────────┐
+  ┌----------------------------------------------------------┐
   │  STAGE 1 — RECORD                                        │
   │  After every ATLAS decision, a MemoryEntry is created    │
   │  and pushed into the DecisionMemoryBuffer (ring buffer). │
-  └───────────────────────┬──────────────────────────────────┘
+  └-----------------------┬----------------------------------┘
                           │
-  ┌───────────────────────▼──────────────────────────────────┐
+  ┌-----------------------▼----------------------------------┐
   │  STAGE 2 — ENRICH                                        │
   │  At the start of each cycle, open positions are          │
   │  retrospectively updated with live PnL and outcome tags. │
-  └───────────────────────┬──────────────────────────────────┘
+  └-----------------------┬----------------------------------┘
                           │
-  ┌───────────────────────▼──────────────────────────────────┐
+  ┌-----------------------▼----------------------------------┐
   │  STAGE 3 — INJECT                                        │
   │  The buffer is serialised to a compact natural-language  │
   │  block and appended to the Market State Vector before    │
   │  it reaches the LLM. ATLAS sees its own history.         │
-  └──────────────────────────────────────────────────────────┘
+  └----------------------------------------------------------┘
 
   WHY NATURAL LANGUAGE OVER RAW JSON FOR THE MEMORY BLOCK?
-  ─────────────────────────────────────────────────────────
+  ---------------------------------------------------------
   LLMs parse structured prose more reliably inside a larger
   context than embedded JSON objects, which compete visually
   with the system prompt's own JSON output schema and can
@@ -44,9 +44,9 @@ from typing import Optional
 from datetime import datetime, timezone
 
 
-# ─────────────────────────────────────────────────────────────
+# -------------------------------------------------------------
 # DATA STRUCTURE
-# ─────────────────────────────────────────────────────────────
+# -------------------------------------------------------------
 
 @dataclass
 class MemoryEntry:
@@ -54,11 +54,11 @@ class MemoryEntry:
     A single record written to the buffer after each ATLAS decision.
     Fields are split into two groups:
 
-    · Immutable at write time  — set when the decision arrives.
-    · Mutable retrospectively  — updated as the position evolves
+    - Immutable at write time  — set when the decision arrives.
+    - Mutable retrospectively  — updated as the position evolves
                                   or closes across future cycles.
     """
-    # ── Written at decision time ──────────────────────────────
+    # -- Written at decision time ------------------------------
     cycle           : int
     timestamp       : str           # ISO UTC
     ticker          : str
@@ -72,7 +72,7 @@ class MemoryEntry:
     volume_signal   : str
     sentiment_signal: str
 
-    # ── Updated retrospectively ───────────────────────────────
+    # -- Updated retrospectively -------------------------------
     current_price   : Optional[float] = None
     unrealised_pnl  : Optional[float] = None   # USD
     unrealised_pct  : Optional[float] = None   # %
@@ -104,9 +104,9 @@ class MemoryEntry:
         self.current_price = exit_price
 
 
-# ─────────────────────────────────────────────────────────────
+# -------------------------------------------------------------
 # RING BUFFER
-# ─────────────────────────────────────────────────────────────
+# -------------------------------------------------------------
 
 class DecisionMemoryBuffer:
     """
@@ -114,12 +114,12 @@ class DecisionMemoryBuffer:
     ATLAS decision (across all tickers, all cycles).
 
     Design decisions:
-    · Ring buffer (deque with maxlen) — O(1) append, automatic
+    - Ring buffer (deque with maxlen) — O(1) append, automatic
       eviction of oldest entries. No memory leak in long sessions.
-    · Keyed index (ticker → entry) — allows O(1) retrospective
+    - Keyed index (ticker → entry) — allows O(1) retrospective
       updates when a position's live price or outcome changes,
       without scanning the entire buffer.
-    · Per-ticker history — serialise() can emit ticker-scoped
+    - Per-ticker history — serialise() can emit ticker-scoped
       sections so ATLAS sees its own decision trail per asset.
     """
 
@@ -134,14 +134,14 @@ class DecisionMemoryBuffer:
         self._index    : dict[str, MemoryEntry]   = {}  # ticker → most recent entry
         self.maxlen    = maxlen
 
-    # ── Write ─────────────────────────────────────────────────
+    # -- Write -------------------------------------------------
 
     def record(self, entry: MemoryEntry):
         """Pushes a new decision into the buffer and updates the index."""
         self._buffer.append(entry)
         self._index[entry.ticker] = entry   # always points to most recent
 
-    # ── Retrospective Update ──────────────────────────────────
+    # -- Retrospective Update ----------------------------------
 
     def update_live_prices(self, current_prices: dict[str, float]):
         """
@@ -167,7 +167,7 @@ class DecisionMemoryBuffer:
         if entry and entry.outcome == "OPEN":
             entry.mark_closed(exit_price, realised_pnl, reason)
 
-    # ── Serialise ─────────────────────────────────────────────
+    # -- Serialise ---------------------------------------------
 
     def serialise(self, for_ticker: Optional[str] = None) -> str:
         """
@@ -182,7 +182,7 @@ class DecisionMemoryBuffer:
                         more heavily when reasoning about that asset.
 
         Format per entry (telegraph style):
-            [CYC-N | TIMESTAMP] TICKER · STANCE (conf=X.XX)
+            [CYC-N | TIMESTAMP] TICKER - STANCE (conf=X.XX)
             Status  : OPEN +2.3% unreal  |  Entry $X  SL $X  TP $X
             Signals : MOM=BULLISH VOL=CONFIRMING SENT=POSITIVE
             Rationale: <ATLAS's own words, truncated to 120 chars>
@@ -192,7 +192,7 @@ class DecisionMemoryBuffer:
 
         lines = []
 
-        # ── Section A: Same-ticker history (most relevant) ────
+        # -- Section A: Same-ticker history (most relevant) ----
         if for_ticker:
             ticker_entries = [e for e in self._buffer if e.ticker == for_ticker]
             if ticker_entries:
@@ -201,7 +201,7 @@ class DecisionMemoryBuffer:
                     lines.extend(self._format_entry(e, highlight=True))
                 lines.append("")
 
-        # ── Section B: Full cross-asset history ───────────────
+        # -- Section B: Full cross-asset history ---------------
         lines.append("  -- FULL DECISION HISTORY (newest first) --")
         for e in reversed(self._buffer):
             lines.extend(self._format_entry(e, highlight=False))
@@ -210,13 +210,13 @@ class DecisionMemoryBuffer:
 
     def _format_entry(self, e: MemoryEntry, highlight: bool) -> list[str]:
         """Formats a single MemoryEntry into 4 compact lines."""
-        prefix = "►" if highlight else " "
+        prefix = ">" if highlight else " "
 
         # Header line
         ts_short = e.timestamp[:16].replace("T", " ")
         header = (
             f"  {prefix} [CYC-{e.cycle} | {ts_short}] "
-            f"{e.ticker} · {e.stance} (conf={e.confidence:.2f})"
+            f"{e.ticker} - {e.stance} (conf={e.confidence:.2f})"
         )
 
         # Status line
@@ -237,7 +237,7 @@ class DecisionMemoryBuffer:
                 f"${e.realised_pnl:+,.2f}"
                 if e.realised_pnl is not None else "PnL N/A"
             )
-            icon = "✓ WIN" if e.outcome == "WIN" else "✗ LOSS"
+            icon = "OK WIN" if e.outcome == "WIN" else "FAIL LOSS"
             status = (
                 f"    Status  : {icon} {pnl_str}"
                 f"  |  Exit ${e.exit_price}  Reason: {e.close_reason}"
@@ -256,7 +256,7 @@ class DecisionMemoryBuffer:
 
         return [header, status, signals, rationale_line, ""]
 
-    # ── Convenience ───────────────────────────────────────────
+    # -- Convenience -------------------------------------------
 
     def __len__(self):
         return len(self._buffer)
@@ -282,14 +282,14 @@ class DecisionMemoryBuffer:
         return count
 
 
-# ─────────────────────────────────────────────────────────────
+# -------------------------------------------------------------
 # GLOBAL BUFFER INSTANCE
 # Instantiated once here; imported by Cells 4 and 6 by reference.
-# ─────────────────────────────────────────────────────────────
+# -------------------------------------------------------------
 
 atlas_memory = DecisionMemoryBuffer(maxlen=20)
 
-print("✅ Cell 9 — DecisionMemoryBuffer initialised (maxlen=20).")
+print("[OK] Cell 9 — DecisionMemoryBuffer initialised (maxlen=20).")
 print(f"   Buffer slots: {atlas_memory.maxlen}  |  Entries so far: {len(atlas_memory)}")
 print()
 
@@ -308,9 +308,9 @@ atlas_memory._index.clear()
 print("  Buffer cleared after smoke test. Ready for live use.")
 
 
-# ═════════════════════════════════════════════════════════════
+# =============================================================
 # PATCH A — Cell 4: get_ai_decision()
-# ═════════════════════════════════════════════════════════════
+# =============================================================
 #
 # Replace your existing get_ai_decision() function in Cell 4
 # with the version below. The only additions are:
@@ -318,7 +318,7 @@ print("  Buffer cleared after smoke test. Ready for live use.")
 #   2. Inject it into the user message before the vector.
 #
 # The system prompt in Cell 4 is UNCHANGED.
-# ═════════════════════════════════════════════════════════════
+# =============================================================
 
 def get_ai_decision(
     market_state_vector : str,
@@ -329,7 +329,7 @@ def get_ai_decision(
     Sends the Market State Vector (+ optional memory block) to Claude
     and returns a parsed tactical decision dictionary.
     """
-    # ── Build memory section ──────────────────────────────────
+    # -- Build memory section ----------------------------------
     memory_section = ""
     if memory_block and memory_block.strip():
         memory_section = f"""
@@ -349,10 +349,10 @@ Asset under analysis: {ticker}
 
 MEMORY GUIDANCE: If the memory block above shows recent decisions for {ticker},
 weigh them carefully:
-  · Avoid reversing a position without a materially changed signal.
-  · If the same stance appears 3+ consecutive cycles, scrutinise whether
+  - Avoid reversing a position without a materially changed signal.
+  - If the same stance appears 3+ consecutive cycles, scrutinise whether
     you are exhibiting confirmation bias or the trend genuinely persists.
-  · A HOLD decision preceded by an open position means the position stays open.
+  - A HOLD decision preceded by an open position means the position stays open.
 
 Respond with JSON only.
 """
@@ -393,38 +393,38 @@ Respond with JSON only.
         return {"status": "error", "error": str(e), "raw": ""}
 
 
-print("✅ Patch A applied — get_ai_decision() now accepts memory_block param.")
+print("[OK] Patch A applied — get_ai_decision() now accepts memory_block param.")
 
 
-# ═════════════════════════════════════════════════════════════
+# =============================================================
 # PATCH B — Cell 6: Trading Loop integration
-# ═════════════════════════════════════════════════════════════
+# =============================================================
 #
 # Three targeted replacements inside run_trading_loop().
 # Each is labelled with its location in the existing Cell 6 code.
-# ═════════════════════════════════════════════════════════════
+# =============================================================
 
 PATCH_B_INSTRUCTIONS = """
-──────────────────────────────────────────────────────────────
-PATCH B  ·  Three changes to Cell 6 (run_trading_loop)
-──────────────────────────────────────────────────────────────
+--------------------------------------------------------------
+PATCH B  -  Three changes to Cell 6 (run_trading_loop)
+--------------------------------------------------------------
 
 CHANGE 1 of 3 — Top of the cycle loop, after current_prices fetch.
 Location: just before "STEP 2: Check stop-loss / take-profit exits"
 
 ADD these two lines:
 
-    # ── Refresh memory with live prices ───────────────────────
+    # -- Refresh memory with live prices -----------------------
     atlas_memory.update_live_prices(current_prices)
 
-────────────────────────────────────────────────────────────
+------------------------------------------------------------
 
 CHANGE 2 of 3 — Inside check_exit_conditions block.
 Location: replace the existing exits-handling block:
 
     exits = portfolio.check_exit_conditions(current_prices)
     if exits:
-        print(f"  ⚡ {len(exits)} position(s) auto-closed by SL/TP rules.")
+        print(f"  [AUTO-CLOSE] {len(exits)} position(s) auto-closed by SL/TP rules.")
 
 REPLACE WITH:
 
@@ -438,9 +438,9 @@ REPLACE WITH:
                 reason       = closed_trade.close_reason,
             )
     if exits:
-        print(f"  ⚡ {len(exits)} position(s) auto-closed by SL/TP rules.")
+        print(f"  [AUTO-CLOSE] {len(exits)} position(s) auto-closed by SL/TP rules.")
 
-────────────────────────────────────────────────────────────
+------------------------------------------------------------
 
 CHANGE 3 of 3 — Inside the per-ticker analysis loop.
 Location: replace the get_ai_decision() call and the
@@ -457,7 +457,7 @@ Then, AFTER the successful decision block where you call
 portfolio.open_position(), ADD the memory record call.
 Find the open_position() call and ADD AFTER it:
 
-    # ── Record decision in memory ──────────────────────────────
+    # -- Record decision in memory ------------------------------
     signals = decision.get("signal_breakdown", {})
     atlas_memory.record(MemoryEntry(
         cycle            = cycle,
@@ -476,15 +476,15 @@ Find the open_position() call and ADD AFTER it:
         sentiment_signal = signals.get("sentiment_signal","NEUTRAL"),
     ))
 
-    # ── Bias detection warning ────────────────────────────────
+    # -- Bias detection warning --------------------------------
     streak = atlas_memory.consecutive_same_stance(ticker, stance)
     if streak >= 3:
         print(
-            f"  ⚠️  BIAS ALERT: ATLAS has chosen {stance} on {ticker} "
+            f"  [WARNING]  BIAS ALERT: ATLAS has chosen {stance} on {ticker} "
             f"{streak} consecutive cycles. Verify signal independence."
         )
 
-──────────────────────────────────────────────────────────────
+--------------------------------------------------------------
 """
 
 print(PATCH_B_INSTRUCTIONS)

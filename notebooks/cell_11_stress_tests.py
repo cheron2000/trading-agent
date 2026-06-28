@@ -3,7 +3,7 @@
   CELL 11 — Phase 3 Sub-Task 3.5: Prompt Stress Testing & Edge Case Hardening
   Paste this into Colab Cell 11 and run it standalone — no live API or
   yfinance calls needed. All inputs are synthetic.
-  ALL 7 TESTS MUST SHOW ✅ PASS before Phase 3 is considered complete.
+  ALL 7 TESTS MUST SHOW [OK] PASS before Phase 3 is considered complete.
 ================================================================================
 """
 
@@ -21,13 +21,13 @@ from collections import deque
 from typing import Optional
 
 
-# ─────────────────────────────────────────────────────────────
+# -------------------------------------------------------------
 # MINIMAL INLINE STUBS
 # These reproduce only the logic paths under test so the harness
 # runs even if Cells 3–10 weren't executed in this session.
-# ─────────────────────────────────────────────────────────────
+# -------------------------------------------------------------
 
-# ── Stub: JSON parser from Cell 4 ────────────────────────────
+# -- Stub: JSON parser from Cell 4 ----------------------------
 def parse_atlas_response(raw_text: str) -> dict:
     """Mirrors the parsing + validation logic in Cell 4 get_ai_decision()."""
     raw_text = re.sub(r"^```[a-z]*\n?", "", raw_text.strip())
@@ -61,7 +61,7 @@ def parse_atlas_response(raw_text: str) -> dict:
     return decision
 
 
-# ── Stub: Sentiment fetcher from Cell 3 ──────────────────────
+# -- Stub: Sentiment fetcher from Cell 3 ----------------------
 def fetch_sentiment_stub(ticker: str, timeout: int = 8) -> dict:
     """Mirrors fetch_sentiment() with injectable urllib behaviour."""
     import urllib.request
@@ -99,7 +99,7 @@ def fetch_sentiment_stub(ticker: str, timeout: int = 8) -> dict:
             "sentiment_label": label}
 
 
-# ── Stub: Market State Vector builder from Cell 3 ─────────────
+# -- Stub: Market State Vector builder from Cell 3 -------------
 def build_msv_stub(df: pd.DataFrame, ticker: str = "TEST") -> str:
     """Minimal MSV builder — accepts a pre-built DataFrame directly."""
     if df is None or df.empty:
@@ -122,7 +122,7 @@ def build_msv_stub(df: pd.DataFrame, ticker: str = "TEST") -> str:
     )
 
 
-# ── Stub: PaperPortfolio open_position from Cell 5 ───────────
+# -- Stub: PaperPortfolio open_position from Cell 5 -----------
 @dataclass
 class _Position:
     ticker: str
@@ -148,15 +148,15 @@ class _PortfolioStub:
         return pos
 
 
-# ─────────────────────────────────────────────────────────────
+# -------------------------------------------------------------
 # TEST HARNESS
-# ─────────────────────────────────────────────────────────────
+# -------------------------------------------------------------
 
 class ATLASStressTests(unittest.TestCase):
 
-    # ══════════════════════════════════════════════════════════
+    # ==========================================================
     # TEST 1 — Malformed LLM JSON Output
-    # ══════════════════════════════════════════════════════════
+    # ==========================================================
     def test_01_malformed_json(self):
         """
         SCENARIO : ATLAS returns broken JSON (truncated, missing brace,
@@ -186,14 +186,14 @@ class ATLASStressTests(unittest.TestCase):
                     # If we reach here with empty or array input, it's a bug
                     self.fail(f"Should have raised an exception for: {raw[:40]}")
                 except (json.JSONDecodeError, ValueError, KeyError) as e:
-                    # ✅ Exception caught — system is protected
+                    # [OK] Exception caught — system is protected
                     pass
 
         print("  TEST 1 PASS — All 5 malformed inputs caught cleanly.")
 
-    # ══════════════════════════════════════════════════════════
+    # ==========================================================
     # TEST 2 — Contradictory Signals
-    # ══════════════════════════════════════════════════════════
+    # ==========================================================
     def test_02_contradictory_signals(self):
         """
         SCENARIO : RSI=28 (oversold → bullish), MACD histogram negative
@@ -237,9 +237,9 @@ class ATLASStressTests(unittest.TestCase):
 
         print(f"  TEST 2 PASS — Contradictory signals → HOLD (conf={confidence}) → no trade.")
 
-    # ══════════════════════════════════════════════════════════
+    # ==========================================================
     # TEST 3 — Confidence Score Out of Bounds
-    # ══════════════════════════════════════════════════════════
+    # ==========================================================
     def test_03_confidence_out_of_bounds(self):
         """
         SCENARIO : ATLAS returns confidence_score = 1.5 or -0.2
@@ -282,9 +282,9 @@ class ATLASStressTests(unittest.TestCase):
 
         print("  TEST 3 PASS — All out-of-bounds confidence values caught.")
 
-    # ══════════════════════════════════════════════════════════
+    # ==========================================================
     # TEST 4 — yfinance Empty / NaN-Heavy DataFrame
-    # ══════════════════════════════════════════════════════════
+    # ==========================================================
     def test_04_empty_and_nan_dataframe(self):
         """
         SCENARIO : yfinance returns (a) a completely empty DataFrame,
@@ -322,9 +322,9 @@ class ATLASStressTests(unittest.TestCase):
 
         print("  TEST 4 PASS — Empty/NaN/thin DataFrames all return [ERROR] safely.")
 
-    # ══════════════════════════════════════════════════════════
+    # ==========================================================
     # TEST 5 — Sentiment Feed Timeout / HTTP Error
-    # ══════════════════════════════════════════════════════════
+    # ==========================================================
     def test_05_sentiment_feed_failure(self):
         """
         SCENARIO : Yahoo Finance RSS feed times out (urllib.error.URLError)
@@ -356,9 +356,9 @@ class ATLASStressTests(unittest.TestCase):
 
         print("  TEST 5 PASS — Sentiment feed timeout/error → neutral fallback, no crash.")
 
-    # ══════════════════════════════════════════════════════════
+    # ==========================================================
     # TEST 6 — Unsupported tactical_stance Value
-    # ══════════════════════════════════════════════════════════
+    # ==========================================================
     def test_06_invalid_tactical_stance(self):
         """
         SCENARIO : ATLAS hallucinates an unsupported stance value such as
@@ -413,9 +413,9 @@ class ATLASStressTests(unittest.TestCase):
 
         print("  TEST 6 PASS — All invalid stances caught; 'buy' normalised to 'BUY'.")
 
-    # ══════════════════════════════════════════════════════════
+    # ==========================================================
     # TEST 7 — Duplicate Position Signal on Same Ticker
-    # ══════════════════════════════════════════════════════════
+    # ==========================================================
     def test_07_duplicate_position_same_ticker(self):
         """
         SCENARIO : ATLAS issues a BUY on AAPL in cycle 1. In cycle 2 it
@@ -456,15 +456,15 @@ class ATLASStressTests(unittest.TestCase):
         print("  TEST 7 PASS — Duplicate BUY on open position skipped; entry price preserved.")
 
 
-# ─────────────────────────────────────────────────────────────
+# -------------------------------------------------------------
 # RUN THE HARNESS
-# ─────────────────────────────────────────────────────────────
+# -------------------------------------------------------------
 
 def run_stress_tests():
     print()
-    print("█" * 62)
+    print("=" * 62)
     print("  🧪  ATLAS STRESS TEST HARNESS — Phase 3.5")
-    print("█" * 62)
+    print("=" * 62)
     print()
 
     loader = unittest.TestLoader()
@@ -488,11 +488,11 @@ def run_stress_tests():
     result = VerboseResult()
     suite.run(result)
 
-    # ── Summary table ─────────────────────────────────────────
+    # -- Summary table -----------------------------------------
     print()
-    print("─" * 62)
+    print("-" * 62)
     print(f"  {'#':<5} {'Test':<45} {'Result'}")
-    print("─" * 62)
+    print("-" * 62)
 
     descriptions = {
         "test_01_malformed_json"         : "Malformed LLM JSON output",
@@ -506,30 +506,30 @@ def run_stress_tests():
 
     all_pass = True
     for i, (status, method, err) in enumerate(result.test_results, 1):
-        icon  = "✅" if status == "PASS" else "❌"
+        icon  = "[OK]" if status == "PASS" else "[FAIL]"
         label = descriptions.get(method, method)
         print(f"  {i:<5} {label:<45} {icon} {status}")
         if err:
-            print(f"        └─ {err[:80]}")
+            print(f"        └- {err[:80]}")
         if status != "PASS":
             all_pass = False
 
-    print("─" * 62)
+    print("-" * 62)
     total  = len(result.test_results)
     passed = sum(1 for s, _, _ in result.test_results if s == "PASS")
     print(f"  Result: {passed}/{total} tests passed")
 
     if all_pass:
         print()
-        print("  ✅ ALL TESTS PASSED — Phase 3 is complete.")
-        print("  🚀 System is hardened and ready for Phase 5:")
+        print("  [OK] ALL TESTS PASSED — Phase 3 is complete.")
+        print("  [START] System is hardened and ready for Phase 5:")
         print("     Safety Guardrails & Live Deployment.")
     else:
         print()
-        print("  ❌ SOME TESTS FAILED — review failures above before")
+        print("  [FAIL] SOME TESTS FAILED — review failures above before")
         print("     proceeding to Phase 5.")
 
-    print("█" * 62)
+    print("=" * 62)
     print()
     return all_pass
 
