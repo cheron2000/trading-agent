@@ -358,14 +358,16 @@ Respond with JSON only.
 """
 
     try:
-        response = client.messages.create(
+        response = client.chat.completions.create(
             model=CONFIG["model"],
             max_tokens=800,
-            system=SYSTEM_PROMPT,
-            messages=[{"role": "user", "content": user_message}],
+            messages=[
+                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "user",   "content": user_message},
+            ],
         )
 
-        raw_text = response.content[0].text.strip()
+        raw_text = response.choices[0].message.content.strip()
         raw_text = re.sub(r"^```[a-z]*\n?", "", raw_text)
         raw_text = re.sub(r"\n?```$",        "", raw_text)
 

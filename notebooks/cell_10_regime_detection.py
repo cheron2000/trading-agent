@@ -594,11 +594,13 @@ print(_test['description'])
 #     regime_addon   = build_regime_system_addon(regime_data) if regime_data else ""
 #     dynamic_system = SYSTEM_PROMPT + regime_addon
 #
-#     response = client.messages.create(
+#     response = client.chat.completions.create(
 #         model=CONFIG["model"],
 #         max_tokens=800,
-#         system=dynamic_system,      # ← was: SYSTEM_PROMPT
-#         ...
+#         messages=[
+#             {"role": "system", "content": dynamic_system},  # ← was: SYSTEM_PROMPT
+#             {"role": "user",   "content": user_message},
+#         ],
 #     )
 #
 # ═════════════════════════════════════════════════════════════

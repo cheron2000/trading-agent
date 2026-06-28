@@ -19,10 +19,10 @@ Paste this into Colab Cell 1 and run it first.
 """
 
 CELL_1 = """
-!pip install -q yfinance anthropic pandas numpy
+!pip install -q yfinance groq pandas numpy
 
 import importlib, sys
-for pkg in ["yfinance", "anthropic", "pandas", "numpy"]:
+for pkg in ["yfinance", "groq", "pandas", "numpy"]:
     if importlib.util.find_spec(pkg) is None:
         raise ImportError(f"Package '{pkg}' failed to install. Check your runtime.")
 
@@ -42,8 +42,8 @@ import os
 from getpass import getpass
 
 # ── API KEY ──────────────────────────────────────────────────
-ANTHROPIC_API_KEY = getpass("🔑 Enter your Anthropic API Key: ")
-os.environ["ANTHROPIC_API_KEY"] = ANTHROPIC_API_KEY
+GROQ_API_KEY = getpass("🔑 Enter your Groq API Key (starts with gsk_): ")
+os.environ["GROQ_API_KEY"] = GROQ_API_KEY
 
 # ── AGENT CONFIGURATION ──────────────────────────────────────
 CONFIG = {
@@ -66,7 +66,7 @@ CONFIG = {
     "max_cycles": 5,
 
     # LLM model to use
-    "model": "claude-sonnet-4-6",
+    "model": "llama-3.3-70b-versatile",   # Free via Groq
 
     # Lookback window for price history (days)
     "price_history_days": 30,
@@ -340,11 +340,11 @@ Paste this into Colab Cell 4.
 """
 
 CELL_4 = """
-import anthropic
+from groq import Groq
 import json
 import re
 
-client = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
+client = Groq(api_key=os.environ["GROQ_API_KEY"])
 
 
 SYSTEM_PROMPT = \"\"\"
@@ -408,14 +408,16 @@ Respond with JSON only.
 \"\"\"
 
     try:
-        response = client.messages.create(
+        response = client.chat.completions.create(
             model=CONFIG["model"],
             max_tokens=800,
-            system=SYSTEM_PROMPT,
-            messages=[{"role": "user", "content": user_message}],
+            messages=[
+                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "user",   "content": user_message},
+            ],
         )
 
-        raw_text = response.content[0].text.strip()
+        raw_text = response.choices[0].message.content.strip()
 
         # Strip any accidental markdown fences
         raw_text = re.sub(r"^```[a-z]*\\n?", "", raw_text)

@@ -46,13 +46,13 @@ Live Market Data (yfinance + Yahoo RSS)
 1. Open [Google Colab](https://colab.new)
 2. Create 9 cells, paste each file's `CELL_N` blocks in order
 3. Run Cell 1 → installs dependencies
-4. Run Cell 2 → enter your [Anthropic API key](https://console.anthropic.com/)
+4. Run Cell 2 → enter your [Groq API key](https://console.groq.com) (free, starts with gsk_)
 5. Run Cells 3–9 → loads all modules
 6. Run Cell 6 → starts the live paper trading loop
 
 ## Tech Stack
 
-- **LLM**: Claude Sonnet 4.6 (Anthropic)
+- **LLM**: Llama 3.3 70B via Groq (free tier — 14,400 req/day)
 - **Market Data**: yfinance, Yahoo Finance RSS
 - **Indicators**: RSI, MACD, Bollinger Bands, ATR, VWAP, SMA, EMA
 - **Sizing**: Quarter-Kelly Criterion with drawdown throttle
