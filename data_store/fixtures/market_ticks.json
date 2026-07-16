@@ -1,0 +1,44 @@
+[
+  {
+    "symbol": "AAPL",
+    "price": 182.50,
+    "volume": 1200000.0,
+    "timestamp": "2024-01-15T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "MSFT",
+    "price": 374.25,
+    "volume": 850000.0,
+    "timestamp": "2024-01-15T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "GOOGL",
+    "price": 140.10,
+    "volume": 620000.0,
+    "timestamp": "2024-01-15T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "BTC-USD",
+    "price": 42500.00,
+    "volume": 18500.5,
+    "timestamp": "2024-01-15T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "ETH-USD",
+    "price": 2280.75,
+    "volume": 95000.0,
+    "timestamp": "2024-01-15T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "TSLA",
+    "price": 218.90,
+    "volume": 3100000.0,
+    "timestamp": "2024-01-15T14:30:00+00:00",
+    "source": "fixture"
+  }
+]
