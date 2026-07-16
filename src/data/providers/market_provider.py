@@ -21,8 +21,8 @@ from typing import ClassVar
 from data.models.market_tick import MarketTick
 from data.providers.i_data_provider import IDataProvider
 
-# Default fixture relative to project root
-_DEFAULT_FIXTURE = Path(__file__).parents[4] / "data_store" / "fixtures" / "market_ticks.json"
+# Default fixture: src/data/providers/ → parents[0]=providers, [1]=data, [2]=src, [3]=project root
+_DEFAULT_FIXTURE = Path(__file__).parents[3] / "data_store" / "fixtures" / "market_ticks.json"
 
 
 class MarketDataProvider:

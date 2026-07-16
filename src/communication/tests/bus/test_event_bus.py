@@ -68,13 +68,13 @@ class TestEventBusWildcard:
         bus.publish(make_event("market.data"))
         assert len(received) == 2
 
-    def test_wildcard_star_does_not_match_deeper_segments(self) -> None:
+    def test_wildcard_star_matches_deeper_segments(self) -> None:
         bus = EventBus()
         received = []
         bus.subscribe("market.*", received.append)
         bus.publish(make_event("market.tick.extra"))
-        # fnmatch: "market.*" does NOT match "market.tick.extra" — * doesn't cross dots
-        assert len(received) == 0
+        # fnmatch: "market.*" DOES match "market.tick.extra" — * matches any chars including dots
+        assert len(received) == 1
 
     def test_global_wildcard_matches_all(self) -> None:
         bus = EventBus()

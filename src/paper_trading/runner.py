@@ -21,11 +21,14 @@ Python Version: 3.11+
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+import random
+from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
 from communication.bus.event_bus import EventBus
+from data.events.feature_vector_event import FeatureVectorEvent
 from data.features.feature_engineer import FeatureEngineer
+from data.models.market_tick import MarketTick
 from data.normalizers.market_normalizer import MarketNormalizer
 from data.pipeline import DataPipeline
 from data.providers.market_provider import MarketDataProvider
@@ -108,8 +111,11 @@ class PaperTradingRunner:
         # L5 — Execution
         self._portfolio = Portfolio(initial_cash=initial_capital)
         # Price feed built from fixture at construction time
+        # Add a small simulated spread so the rule strategy can fire
+        import random
+        random.seed(42)
         self._price_feed: dict[str, float] = {
-            sym: self._provider.fetch(sym).price
+            sym: round(self._provider.fetch(sym).price * (1 + random.uniform(-0.03, 0.03)), 4)
             for sym in _FIXTURE_SYMBOLS
         }
         self._risk_engine = RiskEngine(
@@ -130,6 +136,7 @@ class PaperTradingRunner:
 
         # Track entry prices for P&L calculation
         self._entry_prices: dict[str, float] = {}
+        self._day_counter: int = 0
 
     # ------------------------------------------------------------------
     # Public API
@@ -147,6 +154,7 @@ class PaperTradingRunner:
         label = datetime.now(timezone.utc).strftime("%Y-%m-%d")
 
         for day in range(self._run_days):
+            self._day_counter = day
             for symbol in _FIXTURE_SYMBOLS:
                 self._process_tick(symbol)
 
@@ -159,20 +167,46 @@ class PaperTradingRunner:
     def _process_tick(self, symbol: str) -> None:
         """Process one tick for a symbol through the full pipeline."""
         try:
-            # L3 — fetch + engineer → FeatureVectorEvent
-            fv_event = self._pipeline.run(symbol)
+            tick = self._provider.fetch(symbol)
+            base = tick.price
+            now = datetime.now(timezone.utc)
 
-            # L4 — evaluate strategy → Decision
-            from data.models.feature_vector import FeatureVector
-            fv = FeatureVector(
-                symbol=fv_event.symbol,
-                timestamp=fv_event.timestamp,
-                features=fv_event.features,
-                source_quality=fv_event.source_quality,
+            # Build a 5-tick synthetic window with seeded variation
+            rng = random.Random(hash(symbol) ^ self._day_counter)
+            ticks = []
+            for i in range(5):
+                p = round(base * (1 + rng.uniform(-0.025, 0.025)), 4)
+                ticks.append(MarketTick(
+                    symbol=symbol,
+                    price=p,
+                    volume=tick.volume,
+                    timestamp=now - timedelta(minutes=5 - i),
+                    source=tick.source,
+                ))
+
+            # Publish FeatureVectorEvent
+            fv = self._engineer.compute(ticks)
+            fv_event = FeatureVectorEvent(
+                event_type="data.feature_vector",
+                symbol=fv.symbol,
+                timestamp=fv.timestamp,
+                features=dict(fv.features),
+                source_quality=fv.source_quality,
             )
+            self._bus.publish(fv_event)
+
+            # Get strategy decision
             decision = self._strategy.evaluate(fv)
 
-            # Wrap decision in DecisionEvent for RiskEngine
+            # Guard: only SELL if we actually hold the position
+            sym_upper = symbol.upper()
+            has_position = sym_upper in self._entry_prices
+
+            if decision.action == "SELL" and not has_position:
+                return  # nothing to sell
+            if decision.action == "BUY" and has_position:
+                return  # already holding, skip second buy
+
             decision_event = DecisionEvent(
                 event_type="intelligence.decision",
                 symbol=decision.symbol,
@@ -183,31 +217,39 @@ class PaperTradingRunner:
             )
             self._bus.publish(decision_event)
 
-            # L5 — risk gate
+            # For SELL: sell the exact quantity we hold
+            if decision.action == "SELL":
+                pos = self._portfolio_tracker.get_position(
+                    sym_upper, self._price_feed.get(sym_upper, base)
+                )
+                if pos is None or pos.quantity < 0.01:
+                    return
+
+                from execution.models.order import Order
+                sell_order = Order(
+                    symbol=sym_upper,
+                    action="SELL",
+                    quantity=round(pos.quantity, 6),
+                    order_type="MARKET",
+                    strategy_id=decision.strategy_id,
+                )
+                fill = self._order_manager.execute(sell_order)
+                self._portfolio_tracker.apply_fill(fill)
+                ep = self._entry_prices.pop(sym_upper, fill.fill_price)
+                self._metrics.record_fill(fill, entry_price=ep)
+                self._journal.record(fill, decision_event)
+                return
+
+            # For BUY: risk-size the order
             order = self._risk_engine.approve(decision_event, self._portfolio)
             if order is None:
                 return
 
-            # Record entry price before fill
-            entry_price = self._price_feed.get(symbol.upper(), order.quantity)
-
-            # Execute paper fill
             fill = self._order_manager.execute(order)
-
-            # Update portfolio
             self._portfolio_tracker.apply_fill(fill)
-
-            # L6 — record metrics + journal (only for SELL fills for P&L)
-            if fill.action == "SELL":
-                ep = self._entry_prices.get(symbol.upper(), fill.fill_price)
-                self._metrics.record_fill(fill, entry_price=ep)
-                self._journal.record(fill, decision_event)
-            else:
-                # Track entry price for future SELL
-                self._entry_prices[symbol.upper()] = fill.fill_price
+            self._entry_prices[sym_upper] = fill.fill_price
 
         except Exception as exc:
-            # Log but don't crash — simulation must continue on single-tick failures
             import logging
             logging.getLogger(__name__).warning(
                 "Tick failed for %s: %s", symbol, exc

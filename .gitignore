@@ -58,3 +58,7 @@ data_store/live/
 # Distribution
 *.tar.gz
 *.whl
+
+# Scratch / debug scripts
+debug_*.py
+run_simulation.py
