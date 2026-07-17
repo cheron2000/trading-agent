@@ -23,6 +23,7 @@ from typing import Callable
 from uuid import uuid4
 
 from foundation.base_event import BaseEvent
+from communication.bus.rate_limiter import RateLimiter, RateLimitExceeded
 from communication.models.event_priority import EventPriority
 from communication.models.event_metadata import EventMetadata
 from communication.models.subscription import Subscription
@@ -46,8 +47,15 @@ class EventBus:
     internal state.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, rate_limiter: RateLimiter | None = None) -> None:
+        """
+        Args:
+            rate_limiter: Optional RateLimiter. If provided, every
+                          publish() call is checked against it and
+                          raises RateLimitExceeded if over limit.
+        """
         self._lock: threading.RLock = threading.RLock()
+        self._rate_limiter = rate_limiter
         # Maps subscriber_id → (Subscription, handler)
         self._subscriptions: dict[
             str, tuple[Subscription, Callable[[BaseEvent], None]]
@@ -72,6 +80,9 @@ class EventBus:
         """
         if event is None:
             raise ValueError("event must not be None.")
+
+        if self._rate_limiter is not None:
+            self._rate_limiter.check(event.event_type)
 
         with self._lock:
             matching = [
