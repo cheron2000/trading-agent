@@ -1,15 +1,1 @@
-# AI Trading OS — v1.0.1
-# Pin all dependencies to exact versions for reproducible, supply-chain-safe builds.
-# To regenerate: pip freeze > requirements.txt
-
-# Core
-PyYAML==6.0.2
-
-# Testing
-pytest==8.3.5
-pytest-cov==6.1.0
-
-# Linting / formatting / type checking
-ruff==0.11.13
-black==25.1.0
-mypy==1.15.0
+PyYAML==6.0.3
