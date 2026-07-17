@@ -1,44 +1,1262 @@
 [
   {
     "symbol": "AAPL",
-    "price": 182.50,
-    "volume": 1200000.0,
+    "price": 182.29,
+    "volume": 1092014.1,
+    "timestamp": "2024-01-15T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "AAPL",
+    "price": 182.0,
+    "volume": 1067141.2,
+    "timestamp": "2024-01-16T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "AAPL",
+    "price": 181.83,
+    "volume": 1388246.2,
+    "timestamp": "2024-01-17T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "AAPL",
+    "price": 177.93,
+    "volume": 1001730.6,
+    "timestamp": "2024-01-18T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "AAPL",
+    "price": 177.53,
+    "volume": 1064946.2,
+    "timestamp": "2024-01-19T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "AAPL",
+    "price": 178.02,
+    "volume": 1202570.5,
+    "timestamp": "2024-01-20T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "AAPL",
+    "price": 179.95,
+    "volume": 1271944.5,
+    "timestamp": "2024-01-21T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "AAPL",
+    "price": 180.43,
+    "volume": 1221571.9,
+    "timestamp": "2024-01-22T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "AAPL",
+    "price": 181.28,
+    "volume": 1348526.6,
+    "timestamp": "2024-01-23T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "AAPL",
+    "price": 185.03,
+    "volume": 963119.4,
+    "timestamp": "2024-01-24T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "AAPL",
+    "price": 186.69,
+    "volume": 1123320.2,
+    "timestamp": "2024-01-25T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "AAPL",
+    "price": 182.81,
+    "volume": 1034630.2,
+    "timestamp": "2024-01-26T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "AAPL",
+    "price": 185.39,
+    "volume": 1004518.0,
+    "timestamp": "2024-01-27T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "AAPL",
+    "price": 184.91,
+    "volume": 1006423.9,
+    "timestamp": "2024-01-28T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "AAPL",
+    "price": 187.26,
+    "volume": 1347421.6,
+    "timestamp": "2024-01-29T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "AAPL",
+    "price": 184.32,
+    "volume": 1310271.3,
+    "timestamp": "2024-01-30T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "AAPL",
+    "price": 177.26,
+    "volume": 1141696.5,
+    "timestamp": "2024-01-31T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "AAPL",
+    "price": 175.82,
+    "volume": 1224979.5,
+    "timestamp": "2024-02-01T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "AAPL",
+    "price": 177.75,
+    "volume": 1373619.3,
+    "timestamp": "2024-02-02T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "AAPL",
+    "price": 174.68,
+    "volume": 1237129.0,
+    "timestamp": "2024-02-03T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "AAPL",
+    "price": 174.63,
+    "volume": 1069391.2,
+    "timestamp": "2024-02-04T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "AAPL",
+    "price": 174.03,
+    "volume": 1098906.2,
+    "timestamp": "2024-02-05T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "AAPL",
+    "price": 175.87,
+    "volume": 1008480.7,
+    "timestamp": "2024-02-06T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "AAPL",
+    "price": 176.97,
+    "volume": 1093427.3,
+    "timestamp": "2024-02-07T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "AAPL",
+    "price": 175.48,
+    "volume": 1137686.9,
+    "timestamp": "2024-02-08T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "AAPL",
+    "price": 173.77,
+    "volume": 1060563.4,
+    "timestamp": "2024-02-09T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "AAPL",
+    "price": 173.29,
+    "volume": 1271057.0,
+    "timestamp": "2024-02-10T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "AAPL",
+    "price": 179.53,
+    "volume": 1252382.9,
+    "timestamp": "2024-02-11T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "AAPL",
+    "price": 181.78,
+    "volume": 1038433.2,
+    "timestamp": "2024-02-12T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "AAPL",
+    "price": 185.84,
+    "volume": 1142138.6,
+    "timestamp": "2024-02-13T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "MSFT",
+    "price": 381.49,
+    "volume": 869362.9,
     "timestamp": "2024-01-15T14:30:00+00:00",
     "source": "fixture"
   },
   {
     "symbol": "MSFT",
-    "price": 374.25,
-    "volume": 850000.0,
+    "price": 381.33,
+    "volume": 912768.8,
+    "timestamp": "2024-01-16T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "MSFT",
+    "price": 386.36,
+    "volume": 757876.3,
+    "timestamp": "2024-01-17T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "MSFT",
+    "price": 379.42,
+    "volume": 690914.1,
+    "timestamp": "2024-01-18T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "MSFT",
+    "price": 378.17,
+    "volume": 751734.2,
+    "timestamp": "2024-01-19T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "MSFT",
+    "price": 382.03,
+    "volume": 1000589.3,
+    "timestamp": "2024-01-20T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "MSFT",
+    "price": 385.41,
+    "volume": 902849.1,
+    "timestamp": "2024-01-21T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "MSFT",
+    "price": 382.67,
+    "volume": 814514.8,
+    "timestamp": "2024-01-22T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "MSFT",
+    "price": 387.71,
+    "volume": 770059.3,
+    "timestamp": "2024-01-23T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "MSFT",
+    "price": 385.16,
+    "volume": 763853.4,
+    "timestamp": "2024-01-24T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "MSFT",
+    "price": 381.85,
+    "volume": 878759.2,
+    "timestamp": "2024-01-25T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "MSFT",
+    "price": 380.7,
+    "volume": 985259.8,
+    "timestamp": "2024-01-26T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "MSFT",
+    "price": 378.19,
+    "volume": 1019162.8,
+    "timestamp": "2024-01-27T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "MSFT",
+    "price": 380.54,
+    "volume": 853238.9,
+    "timestamp": "2024-01-28T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "MSFT",
+    "price": 382.14,
+    "volume": 717280.7,
+    "timestamp": "2024-01-29T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "MSFT",
+    "price": 383.28,
+    "volume": 893331.7,
+    "timestamp": "2024-01-30T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "MSFT",
+    "price": 384.95,
+    "volume": 701599.4,
+    "timestamp": "2024-01-31T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "MSFT",
+    "price": 380.2,
+    "volume": 809750.6,
+    "timestamp": "2024-02-01T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "MSFT",
+    "price": 386.57,
+    "volume": 1010166.6,
+    "timestamp": "2024-02-02T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "MSFT",
+    "price": 386.73,
+    "volume": 972665.1,
+    "timestamp": "2024-02-03T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "MSFT",
+    "price": 395.05,
+    "volume": 911781.5,
+    "timestamp": "2024-02-04T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "MSFT",
+    "price": 395.96,
+    "volume": 862569.9,
+    "timestamp": "2024-02-05T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "MSFT",
+    "price": 395.5,
+    "volume": 717927.7,
+    "timestamp": "2024-02-06T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "MSFT",
+    "price": 403.13,
+    "volume": 827820.2,
+    "timestamp": "2024-02-07T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "MSFT",
+    "price": 391.0,
+    "volume": 977790.0,
+    "timestamp": "2024-02-08T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "MSFT",
+    "price": 394.93,
+    "volume": 769552.3,
+    "timestamp": "2024-02-09T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "MSFT",
+    "price": 392.02,
+    "volume": 990293.5,
+    "timestamp": "2024-02-10T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "MSFT",
+    "price": 392.32,
+    "volume": 975976.3,
+    "timestamp": "2024-02-11T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "MSFT",
+    "price": 390.45,
+    "volume": 887049.9,
+    "timestamp": "2024-02-12T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "MSFT",
+    "price": 397.67,
+    "volume": 731965.4,
+    "timestamp": "2024-02-13T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "GOOGL",
+    "price": 140.45,
+    "volume": 689099.4,
     "timestamp": "2024-01-15T14:30:00+00:00",
     "source": "fixture"
   },
   {
     "symbol": "GOOGL",
-    "price": 140.10,
-    "volume": 620000.0,
+    "price": 137.79,
+    "volume": 627527.7,
+    "timestamp": "2024-01-16T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "GOOGL",
+    "price": 139.87,
+    "volume": 500830.2,
+    "timestamp": "2024-01-17T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "GOOGL",
+    "price": 140.0,
+    "volume": 726416.5,
+    "timestamp": "2024-01-18T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "GOOGL",
+    "price": 143.19,
+    "volume": 572263.5,
+    "timestamp": "2024-01-19T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "GOOGL",
+    "price": 140.33,
+    "volume": 510365.4,
+    "timestamp": "2024-01-20T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "GOOGL",
+    "price": 144.38,
+    "volume": 517242.1,
+    "timestamp": "2024-01-21T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "GOOGL",
+    "price": 140.63,
+    "volume": 616525.6,
+    "timestamp": "2024-01-22T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "GOOGL",
+    "price": 144.21,
+    "volume": 685926.9,
+    "timestamp": "2024-01-23T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "GOOGL",
+    "price": 145.98,
+    "volume": 527841.1,
+    "timestamp": "2024-01-24T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "GOOGL",
+    "price": 143.2,
+    "volume": 561734.0,
+    "timestamp": "2024-01-25T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "GOOGL",
+    "price": 143.78,
+    "volume": 712363.4,
+    "timestamp": "2024-01-26T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "GOOGL",
+    "price": 142.5,
+    "volume": 629745.4,
+    "timestamp": "2024-01-27T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "GOOGL",
+    "price": 143.36,
+    "volume": 677022.9,
+    "timestamp": "2024-01-28T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "GOOGL",
+    "price": 144.09,
+    "volume": 742797.0,
+    "timestamp": "2024-01-29T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "GOOGL",
+    "price": 146.12,
+    "volume": 657169.8,
+    "timestamp": "2024-01-30T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "GOOGL",
+    "price": 143.64,
+    "volume": 526009.0,
+    "timestamp": "2024-01-31T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "GOOGL",
+    "price": 144.82,
+    "volume": 551724.9,
+    "timestamp": "2024-02-01T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "GOOGL",
+    "price": 143.33,
+    "volume": 553068.5,
+    "timestamp": "2024-02-02T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "GOOGL",
+    "price": 146.06,
+    "volume": 550613.9,
+    "timestamp": "2024-02-03T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "GOOGL",
+    "price": 149.17,
+    "volume": 552777.6,
+    "timestamp": "2024-02-04T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "GOOGL",
+    "price": 150.76,
+    "volume": 720544.2,
+    "timestamp": "2024-02-05T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "GOOGL",
+    "price": 151.48,
+    "volume": 555025.1,
+    "timestamp": "2024-02-06T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "GOOGL",
+    "price": 150.9,
+    "volume": 661906.5,
+    "timestamp": "2024-02-07T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "GOOGL",
+    "price": 151.32,
+    "volume": 728007.5,
+    "timestamp": "2024-02-08T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "GOOGL",
+    "price": 152.71,
+    "volume": 637618.7,
+    "timestamp": "2024-02-09T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "GOOGL",
+    "price": 148.63,
+    "volume": 696259.3,
+    "timestamp": "2024-02-10T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "GOOGL",
+    "price": 149.48,
+    "volume": 543221.7,
+    "timestamp": "2024-02-11T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "GOOGL",
+    "price": 151.7,
+    "volume": 601047.5,
+    "timestamp": "2024-02-12T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "GOOGL",
+    "price": 153.31,
+    "volume": 611822.1,
+    "timestamp": "2024-02-13T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "BTC-USD",
+    "price": 42313.72,
+    "volume": 22083.4,
     "timestamp": "2024-01-15T14:30:00+00:00",
     "source": "fixture"
   },
   {
     "symbol": "BTC-USD",
-    "price": 42500.00,
-    "volume": 18500.5,
+    "price": 40494.62,
+    "volume": 15528.7,
+    "timestamp": "2024-01-16T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "BTC-USD",
+    "price": 39649.96,
+    "volume": 21176.9,
+    "timestamp": "2024-01-17T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "BTC-USD",
+    "price": 40331.48,
+    "volume": 16640.5,
+    "timestamp": "2024-01-18T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "BTC-USD",
+    "price": 40876.38,
+    "volume": 17922.4,
+    "timestamp": "2024-01-19T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "BTC-USD",
+    "price": 42182.46,
+    "volume": 16861.7,
+    "timestamp": "2024-01-20T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "BTC-USD",
+    "price": 42249.22,
+    "volume": 18079.7,
+    "timestamp": "2024-01-21T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "BTC-USD",
+    "price": 45184.71,
+    "volume": 21174.6,
+    "timestamp": "2024-01-22T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "BTC-USD",
+    "price": 44837.36,
+    "volume": 22195.3,
+    "timestamp": "2024-01-23T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "BTC-USD",
+    "price": 44769.84,
+    "volume": 20987.2,
+    "timestamp": "2024-01-24T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "BTC-USD",
+    "price": 47846.8,
+    "volume": 21080.9,
+    "timestamp": "2024-01-25T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "BTC-USD",
+    "price": 47283.91,
+    "volume": 16031.1,
+    "timestamp": "2024-01-26T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "BTC-USD",
+    "price": 46375.08,
+    "volume": 17768.2,
+    "timestamp": "2024-01-27T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "BTC-USD",
+    "price": 46531.57,
+    "volume": 15234.3,
+    "timestamp": "2024-01-28T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "BTC-USD",
+    "price": 43662.86,
+    "volume": 16763.0,
+    "timestamp": "2024-01-29T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "BTC-USD",
+    "price": 46351.36,
+    "volume": 20602.7,
+    "timestamp": "2024-01-30T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "BTC-USD",
+    "price": 45020.46,
+    "volume": 21884.7,
+    "timestamp": "2024-01-31T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "BTC-USD",
+    "price": 45483.09,
+    "volume": 22166.7,
+    "timestamp": "2024-02-01T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "BTC-USD",
+    "price": 43510.99,
+    "volume": 15945.9,
+    "timestamp": "2024-02-02T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "BTC-USD",
+    "price": 42862.88,
+    "volume": 16996.1,
+    "timestamp": "2024-02-03T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "BTC-USD",
+    "price": 44586.44,
+    "volume": 18812.8,
+    "timestamp": "2024-02-04T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "BTC-USD",
+    "price": 44309.54,
+    "volume": 20335.6,
+    "timestamp": "2024-02-05T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "BTC-USD",
+    "price": 46024.62,
+    "volume": 18521.6,
+    "timestamp": "2024-02-06T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "BTC-USD",
+    "price": 46736.62,
+    "volume": 21110.7,
+    "timestamp": "2024-02-07T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "BTC-USD",
+    "price": 48767.09,
+    "volume": 15393.2,
+    "timestamp": "2024-02-08T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "BTC-USD",
+    "price": 51951.41,
+    "volume": 16175.5,
+    "timestamp": "2024-02-09T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "BTC-USD",
+    "price": 50096.42,
+    "volume": 16541.0,
+    "timestamp": "2024-02-10T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "BTC-USD",
+    "price": 48904.26,
+    "volume": 15687.6,
+    "timestamp": "2024-02-11T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "BTC-USD",
+    "price": 49828.82,
+    "volume": 19200.0,
+    "timestamp": "2024-02-12T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "BTC-USD",
+    "price": 49188.71,
+    "volume": 19383.9,
+    "timestamp": "2024-02-13T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "ETH-USD",
+    "price": 2209.6,
+    "volume": 95865.7,
     "timestamp": "2024-01-15T14:30:00+00:00",
     "source": "fixture"
   },
   {
     "symbol": "ETH-USD",
-    "price": 2280.75,
-    "volume": 95000.0,
+    "price": 2252.06,
+    "volume": 111518.8,
+    "timestamp": "2024-01-16T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "ETH-USD",
+    "price": 2283.13,
+    "volume": 85070.1,
+    "timestamp": "2024-01-17T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "ETH-USD",
+    "price": 2383.17,
+    "volume": 91039.9,
+    "timestamp": "2024-01-18T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "ETH-USD",
+    "price": 2359.4,
+    "volume": 88014.7,
+    "timestamp": "2024-01-19T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "ETH-USD",
+    "price": 2313.05,
+    "volume": 104570.9,
+    "timestamp": "2024-01-20T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "ETH-USD",
+    "price": 2380.22,
+    "volume": 113941.3,
+    "timestamp": "2024-01-21T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "ETH-USD",
+    "price": 2415.56,
+    "volume": 113851.7,
+    "timestamp": "2024-01-22T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "ETH-USD",
+    "price": 2460.42,
+    "volume": 86077.6,
+    "timestamp": "2024-01-23T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "ETH-USD",
+    "price": 2484.56,
+    "volume": 111463.9,
+    "timestamp": "2024-01-24T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "ETH-USD",
+    "price": 2592.35,
+    "volume": 90042.0,
+    "timestamp": "2024-01-25T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "ETH-USD",
+    "price": 2493.88,
+    "volume": 81994.4,
+    "timestamp": "2024-01-26T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "ETH-USD",
+    "price": 2551.56,
+    "volume": 99243.8,
+    "timestamp": "2024-01-27T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "ETH-USD",
+    "price": 2458.28,
+    "volume": 113514.9,
+    "timestamp": "2024-01-28T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "ETH-USD",
+    "price": 2456.34,
+    "volume": 107050.0,
+    "timestamp": "2024-01-29T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "ETH-USD",
+    "price": 2452.19,
+    "volume": 87376.4,
+    "timestamp": "2024-01-30T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "ETH-USD",
+    "price": 2371.07,
+    "volume": 81103.1,
+    "timestamp": "2024-01-31T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "ETH-USD",
+    "price": 2239.61,
+    "volume": 80386.3,
+    "timestamp": "2024-02-01T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "ETH-USD",
+    "price": 2304.57,
+    "volume": 86349.2,
+    "timestamp": "2024-02-02T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "ETH-USD",
+    "price": 2358.36,
+    "volume": 98983.5,
+    "timestamp": "2024-02-03T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "ETH-USD",
+    "price": 2352.19,
+    "volume": 100101.0,
+    "timestamp": "2024-02-04T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "ETH-USD",
+    "price": 2311.49,
+    "volume": 86031.4,
+    "timestamp": "2024-02-05T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "ETH-USD",
+    "price": 2174.09,
+    "volume": 108151.9,
+    "timestamp": "2024-02-06T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "ETH-USD",
+    "price": 2186.22,
+    "volume": 79507.3,
+    "timestamp": "2024-02-07T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "ETH-USD",
+    "price": 2145.15,
+    "volume": 76134.7,
+    "timestamp": "2024-02-08T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "ETH-USD",
+    "price": 2170.06,
+    "volume": 105302.5,
+    "timestamp": "2024-02-09T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "ETH-USD",
+    "price": 2141.82,
+    "volume": 104166.8,
+    "timestamp": "2024-02-10T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "ETH-USD",
+    "price": 2108.92,
+    "volume": 96963.9,
+    "timestamp": "2024-02-11T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "ETH-USD",
+    "price": 2104.05,
+    "volume": 78859.3,
+    "timestamp": "2024-02-12T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "ETH-USD",
+    "price": 2110.18,
+    "volume": 109558.0,
+    "timestamp": "2024-02-13T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "TSLA",
+    "price": 224.67,
+    "volume": 3514897.8,
     "timestamp": "2024-01-15T14:30:00+00:00",
     "source": "fixture"
   },
   {
     "symbol": "TSLA",
-    "price": 218.90,
-    "volume": 3100000.0,
-    "timestamp": "2024-01-15T14:30:00+00:00",
+    "price": 220.78,
+    "volume": 3202311.9,
+    "timestamp": "2024-01-16T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "TSLA",
+    "price": 222.61,
+    "volume": 2862240.4,
+    "timestamp": "2024-01-17T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "TSLA",
+    "price": 225.05,
+    "volume": 3594737.0,
+    "timestamp": "2024-01-18T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "TSLA",
+    "price": 228.35,
+    "volume": 3594666.5,
+    "timestamp": "2024-01-19T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "TSLA",
+    "price": 217.6,
+    "volume": 2740494.9,
+    "timestamp": "2024-01-20T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "TSLA",
+    "price": 217.72,
+    "volume": 3447344.1,
+    "timestamp": "2024-01-21T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "TSLA",
+    "price": 220.36,
+    "volume": 3576327.0,
+    "timestamp": "2024-01-22T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "TSLA",
+    "price": 214.09,
+    "volume": 2671646.1,
+    "timestamp": "2024-01-23T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "TSLA",
+    "price": 218.33,
+    "volume": 3633052.5,
+    "timestamp": "2024-01-24T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "TSLA",
+    "price": 228.28,
+    "volume": 3485356.9,
+    "timestamp": "2024-01-25T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "TSLA",
+    "price": 216.66,
+    "volume": 3572956.1,
+    "timestamp": "2024-01-26T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "TSLA",
+    "price": 225.51,
+    "volume": 2891910.0,
+    "timestamp": "2024-01-27T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "TSLA",
+    "price": 227.05,
+    "volume": 3634211.7,
+    "timestamp": "2024-01-28T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "TSLA",
+    "price": 230.82,
+    "volume": 3485329.2,
+    "timestamp": "2024-01-29T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "TSLA",
+    "price": 220.02,
+    "volume": 2810839.1,
+    "timestamp": "2024-01-30T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "TSLA",
+    "price": 220.74,
+    "volume": 3561486.8,
+    "timestamp": "2024-01-31T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "TSLA",
+    "price": 218.28,
+    "volume": 3544655.6,
+    "timestamp": "2024-02-01T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "TSLA",
+    "price": 220.12,
+    "volume": 3050776.0,
+    "timestamp": "2024-02-02T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "TSLA",
+    "price": 230.21,
+    "volume": 2858436.7,
+    "timestamp": "2024-02-03T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "TSLA",
+    "price": 231.49,
+    "volume": 2509343.9,
+    "timestamp": "2024-02-04T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "TSLA",
+    "price": 227.61,
+    "volume": 2719480.9,
+    "timestamp": "2024-02-05T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "TSLA",
+    "price": 222.35,
+    "volume": 3678942.5,
+    "timestamp": "2024-02-06T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "TSLA",
+    "price": 232.26,
+    "volume": 2826115.0,
+    "timestamp": "2024-02-07T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "TSLA",
+    "price": 228.68,
+    "volume": 3696625.6,
+    "timestamp": "2024-02-08T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "TSLA",
+    "price": 224.31,
+    "volume": 3144907.5,
+    "timestamp": "2024-02-09T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "TSLA",
+    "price": 227.0,
+    "volume": 3683296.8,
+    "timestamp": "2024-02-10T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "TSLA",
+    "price": 226.07,
+    "volume": 2701424.1,
+    "timestamp": "2024-02-11T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "TSLA",
+    "price": 230.5,
+    "volume": 2614419.2,
+    "timestamp": "2024-02-12T14:30:00+00:00",
+    "source": "fixture"
+  },
+  {
+    "symbol": "TSLA",
+    "price": 229.56,
+    "volume": 3018859.1,
+    "timestamp": "2024-02-13T14:30:00+00:00",
     "source": "fixture"
   }
 ]

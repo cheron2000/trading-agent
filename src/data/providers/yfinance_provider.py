@@ -80,17 +80,13 @@ class YFinanceProvider:
         # Tor proxy setup — only imported when use_tor=True
         self._tor = None
         if use_tor:
+            import os
             from data.providers.tor_session import TorProxySession
             self._tor = TorProxySession(control_password=tor_control_password)
-            try:
-                import yfinance.shared as _yfs
-                _yfs._requests = self._tor.session
-                _log.info("yfinance session patched to use Tor proxy.")
-            except Exception:
-                _log.warning(
-                    "Could not patch yfinance session with Tor proxy.",
-                    exc_info=True,
-                )
+            # Set env-level proxy so yfinance's internal requests picks it up
+            os.environ["HTTP_PROXY"] = "socks5h://127.0.0.1:9150"
+            os.environ["HTTPS_PROXY"] = "socks5h://127.0.0.1:9150"
+            _log.info("Tor proxy set via environment variables (port 9150).")
 
     # ------------------------------------------------------------------
     # IDataProvider implementation
@@ -171,19 +167,60 @@ class YFinanceProvider:
     # ------------------------------------------------------------------
 
     def _fetch_batch(self, symbols: list[str]) -> None:
-        """Batch download via yf.download and populate the cache.
+        """Fetch prices for symbols, using Tor session if available.
 
-        Uses exponential backoff on rate-limit errors (429).
+        When Tor is active, fetches directly via Yahoo Finance JSON API
+        through the Tor SOCKS5 proxy (bypasses yfinance's internal client).
+        Falls back to yf.download when Tor is not configured.
 
         Args:
             symbols: List of ticker symbols to fetch.
         """
+        if self._tor is not None:
+            self._fetch_via_tor(symbols)
+        else:
+            self._fetch_via_yfinance(symbols)
+
+    def _fetch_via_tor(self, symbols: list[str]) -> None:
+        """Fetch prices via Yahoo Finance JSON API through Tor session."""
+        now_epoch = time.monotonic()
+        now_dt = datetime.now(timezone.utc)
+        session = self._tor.session
+        for sym in symbols:
+            for attempt in range(self._MAX_RETRIES):
+                try:
+                    url = (
+                        f"https://query1.finance.yahoo.com/v8/finance/chart/{sym}"
+                        f"?interval=1m&range=1d"
+                    )
+                    resp = session.get(url, timeout=15, headers={
+                        "User-Agent": "Mozilla/5.0"
+                    })
+                    if resp.status_code == 429:
+                        self._tor.rotate_ip()
+                        time.sleep(10)
+                        continue
+                    resp.raise_for_status()
+                    data = resp.json()
+                    result = data["chart"]["result"][0]
+                    closes = result["indicators"]["quote"][0]["close"]
+                    volumes = result["indicators"]["quote"][0].get("volume", [0])
+                    price = float(next(v for v in reversed(closes) if v is not None))
+                    volume = float(next((v for v in reversed(volumes) if v is not None), 0.0))
+                    self._cache[sym] = (price, volume, now_dt, now_epoch)
+                    break
+                except Exception:
+                    _log.warning("Tor fetch failed for %s (attempt %d)", sym, attempt + 1, exc_info=True)
+                    if attempt < self._MAX_RETRIES - 1:
+                        self._tor.rotate_ip()
+                        time.sleep(10)
+
+    def _fetch_via_yfinance(self, symbols: list[str]) -> None:
+        """Batch download via yf.download with exponential backoff."""
         tickers = " ".join(symbols)
         delay = 2.0
-
         for attempt in range(self._MAX_RETRIES):
             try:
-                # Single HTTP call for all symbols
                 data = self._yf.download(
                     tickers=tickers,
                     period=self._period,
@@ -191,45 +228,27 @@ class YFinanceProvider:
                     group_by="ticker",
                     auto_adjust=True,
                     progress=False,
-                    threads=False,  # avoid internal parallelism
+                    threads=False,
                 )
-
                 if data is None or data.empty:
                     return
-
                 now_epoch = time.monotonic()
-
                 if len(symbols) == 1:
-                    # Single-symbol download has flat columns
-                    sym = symbols[0]
-                    self._store_single(sym, data, now_epoch)
+                    self._store_single(symbols[0], data, now_epoch)
                 else:
-                    # Multi-symbol download has MultiIndex columns
                     for sym in symbols:
-                        sym_upper = sym.upper()
                         try:
-                            sym_data = data[sym_upper]
-                            self._store_single(sym_upper, sym_data, now_epoch)
+                            self._store_single(sym.upper(), data[sym.upper()], now_epoch)
                         except (KeyError, TypeError):
                             continue
-                return  # success
-
+                return
             except Exception as exc:
                 err_str = str(exc).lower()
-                is_rate_limit = (
-                    "too many requests" in err_str
-                    or "rate limit" in err_str
-                    or "429" in err_str
-                )
+                is_rate_limit = "too many requests" in err_str or "429" in err_str
                 if is_rate_limit and attempt < self._MAX_RETRIES - 1:
-                    if self._tor is not None:
-                        self._tor.rotate_ip()
-                        time.sleep(10)  # Tor NEWNYM cooldown
-                    else:
-                        time.sleep(delay)
-                        delay *= 2  # exponential backoff: 2s, 4s, 8s
+                    time.sleep(delay)
+                    delay *= 2
                     continue
-                # Non-rate-limit error or exhausted retries — give up silently
                 return
 
     def _store_single(

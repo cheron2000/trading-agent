@@ -29,8 +29,11 @@ class MarketDataProvider:
     """Fixture-backed market data provider.
 
     Loads a JSON fixture on construction and serves MarketTick objects
-    by symbol lookup. Intended for development and testing; a live
-    provider would implement the same IDataProvider interface.
+    by symbol lookup. When the fixture contains multiple entries per
+    symbol (e.g. 30 daily rows), each successive call to ``fetch()``
+    for that symbol advances to the next entry, cycling back to the
+    start when exhausted. This enables realistic price movement across
+    simulation days without any live network calls.
 
     Fixture format (list of tick objects):
     [
@@ -49,7 +52,10 @@ class MarketDataProvider:
 
     def __init__(self, fixture_path: Path | str = _DEFAULT_FIXTURE) -> None:
         self._fixture_path = Path(fixture_path)
-        self._ticks: dict[str, MarketTick] = {}
+        # Stores ordered list of ticks per symbol for cycling
+        self._tick_lists: dict[str, list[MarketTick]] = {}
+        # Current index per symbol — advances on each fetch()
+        self._indices: dict[str, int] = {}
         self._load_fixture()
 
     # ------------------------------------------------------------------
@@ -62,7 +68,12 @@ class MarketDataProvider:
         return self.SOURCE_NAME
 
     def fetch(self, symbol: str) -> MarketTick:
-        """Return the latest fixture tick for a symbol.
+        """Return the next fixture tick for a symbol.
+
+        Advances an internal index on each call so successive fetches
+        return different daily entries, enabling realistic P&L simulation.
+        When all entries for a symbol are exhausted the index wraps back
+        to zero (cycles).
 
         Args:
             symbol: Canonical ticker symbol.
@@ -77,11 +88,15 @@ class MarketDataProvider:
             raise ValueError("symbol must not be empty.")
 
         key = symbol.strip().upper()
-        if key not in self._ticks:
+        if key not in self._tick_lists:
             raise ValueError(
                 f"Symbol '{key}' not found in fixture '{self._fixture_path}'."
             )
-        return self._ticks[key]
+        ticks = self._tick_lists[key]
+        idx = self._indices[key]
+        tick = ticks[idx]
+        self._indices[key] = (idx + 1) % len(ticks)
+        return tick
 
     # ------------------------------------------------------------------
     # Internal helpers
@@ -100,7 +115,11 @@ class MarketDataProvider:
 
         for item in raw:
             tick = self._parse_tick(item)
-            self._ticks[tick.symbol.upper()] = tick
+            key = tick.symbol.upper()
+            if key not in self._tick_lists:
+                self._tick_lists[key] = []
+                self._indices[key] = 0
+            self._tick_lists[key].append(tick)
 
     @staticmethod
     def _parse_tick(raw: dict) -> MarketTick:

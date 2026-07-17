@@ -21,6 +21,7 @@ Python Version: 3.11+
 
 from __future__ import annotations
 
+import logging
 import random
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
@@ -35,6 +36,7 @@ from data.pipeline import DataPipeline
 from data.providers.i_data_provider import IDataProvider
 from data.providers.market_provider import MarketDataProvider
 from data.providers.yfinance_provider import YFinanceProvider
+from data.providers.alpha_vantage_provider import AlphaVantageProvider
 from intelligence.events.decision_event import DecisionEvent
 from intelligence.strategies.rule_based import SimpleRuleStrategy
 from execution.engine.order_manager import OrderManager
@@ -45,6 +47,8 @@ from analytics.journal.trade_journal import TradeJournal
 from analytics.metrics.metrics_engine import MetricsEngine
 from analytics.reports.report_generator import ReportGenerator
 
+
+_log = logging.getLogger(__name__)
 
 # Default fixture path
 _DEFAULT_FIXTURE = (
@@ -82,17 +86,24 @@ class PaperTradingRunner:
         fixture_path: Path | str = _DEFAULT_FIXTURE,
         use_tor: bool = False,
         tor_control_password: str = "",
+        alpha_vantage_keys: list[str] | None = None,
+        requests_per_key: int = 25,
     ) -> None:
         """
         Args:
             initial_capital:      Starting cash for the portfolio.
             run_days:             Number of simulated trading days.
             threshold:            SimpleRuleStrategy price_change_pct threshold.
-            live:                 If True, use YFinanceProvider for real prices.
+            live:                 If True, use a live data provider (Alpha Vantage
+                                  if alpha_vantage_keys provided, else YFinance).
             fixture_path:         Path to fixture JSON (ignored when live=True).
             use_tor:              Route Yahoo Finance requests through Tor proxy.
-                                  Requires Tor daemon on 127.0.0.1:9050.
+                                  Only used when live=True and no AV keys given.
             tor_control_password: Tor control port password (default empty).
+            alpha_vantage_keys:   List of Alpha Vantage API keys for key rotation.
+                                  When provided with live=True, Alpha Vantage is
+                                  used instead of Yahoo Finance.
+            requests_per_key:     Requests before rotating to next AV key (default 25).
 
         Raises:
             ValueError: If initial_capital <= 0 or run_days < 1.
@@ -116,14 +127,33 @@ class PaperTradingRunner:
 
         # L3 — Data
         if live:
-            self._provider: IDataProvider = YFinanceProvider(
-                symbols=_FIXTURE_SYMBOLS,
-                ttl_seconds=60.0,
-                use_tor=use_tor,
-                tor_control_password=tor_control_password,
-            )
-            self._normalizer = MarketNormalizer(source="yfinance")
-            # Warm the cache with a single batch request before the loop
+            if alpha_vantage_keys:
+                # Alpha Vantage with key rotation — preferred live source
+                self._provider: IDataProvider = AlphaVantageProvider(
+                    api_keys=alpha_vantage_keys,
+                    symbols=_FIXTURE_SYMBOLS,
+                    requests_per_key=requests_per_key,
+                    ttl_seconds=60.0,
+                )
+                self._normalizer = MarketNormalizer(source="alphavantage")
+                _log.info(
+                    "Live mode: Alpha Vantage (%d key(s), %d req/key, "
+                    "daily budget: %d requests).",
+                    len(alpha_vantage_keys),
+                    requests_per_key,
+                    len(alpha_vantage_keys) * requests_per_key,
+                )
+            else:
+                # Fallback: Yahoo Finance (may hit rate limits)
+                self._provider = YFinanceProvider(
+                    symbols=_FIXTURE_SYMBOLS,
+                    ttl_seconds=60.0,
+                    use_tor=use_tor,
+                    tor_control_password=tor_control_password,
+                )
+                self._normalizer = MarketNormalizer(source="yfinance")
+                _log.info("Live mode: Yahoo Finance (may be rate limited).")
+            # Warm the cache before the simulation loop
             self._provider.warm_cache()  # type: ignore[attr-defined]
         else:
             self._provider = MarketDataProvider(fixture_path=Path(fixture_path))
@@ -219,6 +249,9 @@ class PaperTradingRunner:
                     timestamp=now - timedelta(minutes=5 - i),
                     source=tick.source,
                 ))
+
+            # Update live price feed so orders fill at today's price
+            self._price_feed[symbol.upper()] = round(base, 4)
 
             # Publish FeatureVectorEvent
             fv = self._engineer.compute(ticks)

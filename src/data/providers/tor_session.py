@@ -20,8 +20,8 @@ import logging
 
 _log = logging.getLogger(__name__)
 
-SOCKS5_PROXY = "socks5h://127.0.0.1:9050"  # h = remote DNS via Tor
-TOR_CONTROL_PORT = 9051
+SOCKS5_PROXY = "socks5h://127.0.0.1:9150"  # Tor Browser default SOCKS port
+TOR_CONTROL_PORT = 9151  # Tor Browser control port
 
 
 class TorProxySession:
