@@ -14,9 +14,12 @@ Python Version: 3.11+
 
 from __future__ import annotations
 
+import logging
 import time
 from datetime import datetime, timezone
 from typing import ClassVar
+
+_log = logging.getLogger(__name__)
 
 from data.models.market_tick import MarketTick
 from data.providers.i_data_provider import IDataProvider
@@ -47,14 +50,18 @@ class YFinanceProvider:
         ttl_seconds: float = 60.0,
         period: str = "1d",
         interval: str = "1m",
+        use_tor: bool = False,
+        tor_control_password: str = "",
     ) -> None:
         """
         Args:
-            symbols:     Known symbols to pre-warm cache for. Optional.
-            ttl_seconds: How long a cached price is considered fresh.
-                         Default 60s — safe for Yahoo Finance free tier.
-            period:      History window passed to yfinance (e.g. "1d").
-            interval:    Candle interval (e.g. "1m", "5m", "1h").
+            symbols:              Known symbols to pre-warm cache for.
+            ttl_seconds:          How long a cached price is considered fresh.
+            period:               History window passed to yfinance.
+            interval:             Candle interval (e.g. "1m", "5m").
+            use_tor:              Route all requests through local Tor proxy.
+                                  Requires Tor daemon on 127.0.0.1:9050.
+            tor_control_password: Tor control port password (default empty).
         """
         try:
             import yfinance as yf
@@ -69,6 +76,21 @@ class YFinanceProvider:
         self._period = period
         self._interval = interval
         self._cache: dict[str, _CacheEntry] = {}
+
+        # Tor proxy setup — only imported when use_tor=True
+        self._tor = None
+        if use_tor:
+            from data.providers.tor_session import TorProxySession
+            self._tor = TorProxySession(control_password=tor_control_password)
+            try:
+                import yfinance.shared as _yfs
+                _yfs._requests = self._tor.session
+                _log.info("yfinance session patched to use Tor proxy.")
+            except Exception:
+                _log.warning(
+                    "Could not patch yfinance session with Tor proxy.",
+                    exc_info=True,
+                )
 
     # ------------------------------------------------------------------
     # IDataProvider implementation
@@ -200,8 +222,12 @@ class YFinanceProvider:
                     or "429" in err_str
                 )
                 if is_rate_limit and attempt < self._MAX_RETRIES - 1:
-                    time.sleep(delay)
-                    delay *= 2  # exponential backoff: 2s, 4s, 8s
+                    if self._tor is not None:
+                        self._tor.rotate_ip()
+                        time.sleep(10)  # Tor NEWNYM cooldown
+                    else:
+                        time.sleep(delay)
+                        delay *= 2  # exponential backoff: 2s, 4s, 8s
                     continue
                 # Non-rate-limit error or exhausted retries — give up silently
                 return
@@ -231,7 +257,11 @@ class YFinanceProvider:
 
             self._cache[symbol] = (price, volume, ts, now_epoch)
         except Exception:
-            pass  # skip symbols with unexpected structure
+            _log.warning(
+                "Failed to parse yfinance data for symbol '%s'",
+                symbol,
+                exc_info=True,
+            )
 
 
 # Runtime protocol check

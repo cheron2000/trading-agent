@@ -80,15 +80,19 @@ class PaperTradingRunner:
         threshold: float = 0.5,
         live: bool = False,
         fixture_path: Path | str = _DEFAULT_FIXTURE,
+        use_tor: bool = False,
+        tor_control_password: str = "",
     ) -> None:
         """
         Args:
-            initial_capital: Starting cash for the portfolio.
-            run_days:        Number of simulated trading days.
-            threshold:       SimpleRuleStrategy price_change_pct threshold.
-            live:            If True, use YFinanceProvider for real prices.
-                             If False (default), use fixture data.
-            fixture_path:    Path to fixture JSON (ignored when live=True).
+            initial_capital:      Starting cash for the portfolio.
+            run_days:             Number of simulated trading days.
+            threshold:            SimpleRuleStrategy price_change_pct threshold.
+            live:                 If True, use YFinanceProvider for real prices.
+            fixture_path:         Path to fixture JSON (ignored when live=True).
+            use_tor:              Route Yahoo Finance requests through Tor proxy.
+                                  Requires Tor daemon on 127.0.0.1:9050.
+            tor_control_password: Tor control port password (default empty).
 
         Raises:
             ValueError: If initial_capital <= 0 or run_days < 1.
@@ -114,7 +118,9 @@ class PaperTradingRunner:
         if live:
             self._provider: IDataProvider = YFinanceProvider(
                 symbols=_FIXTURE_SYMBOLS,
-                ttl_seconds=60.0,   # cache prices for 60s — safe for Yahoo
+                ttl_seconds=60.0,
+                use_tor=use_tor,
+                tor_control_password=tor_control_password,
             )
             self._normalizer = MarketNormalizer(source="yfinance")
             # Warm the cache with a single batch request before the loop
