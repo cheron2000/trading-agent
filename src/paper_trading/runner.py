@@ -26,6 +26,7 @@ from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
 from communication.bus.event_bus import EventBus
+from communication.bus.rate_limiter import RateLimiter
 from data.events.feature_vector_event import FeatureVectorEvent
 from data.features.feature_engineer import FeatureEngineer
 from data.models.market_tick import MarketTick
@@ -103,7 +104,11 @@ class PaperTradingRunner:
         # ------------------------------------------------------------------
         # Wire up all layers
         # ------------------------------------------------------------------
-        self._bus = EventBus()
+        _rl = RateLimiter(default_rate=1000.0, default_capacity=2000.0)
+        _rl.set_limit("data", rate=500.0, capacity=1000.0)
+        _rl.set_limit("intelligence", rate=200.0, capacity=400.0)
+        _rl.set_limit("execution", rate=100.0, capacity=200.0)
+        self._bus = EventBus(rate_limiter=_rl)
 
         # L3 — Data
         if live:
