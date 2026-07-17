@@ -31,7 +31,9 @@ from data.features.feature_engineer import FeatureEngineer
 from data.models.market_tick import MarketTick
 from data.normalizers.market_normalizer import MarketNormalizer
 from data.pipeline import DataPipeline
+from data.providers.i_data_provider import IDataProvider
 from data.providers.market_provider import MarketDataProvider
+from data.providers.yfinance_provider import YFinanceProvider
 from intelligence.events.decision_event import DecisionEvent
 from intelligence.strategies.rule_based import SimpleRuleStrategy
 from execution.engine.order_manager import OrderManager
@@ -53,15 +55,21 @@ _FIXTURE_SYMBOLS = ["AAPL", "MSFT", "GOOGL", "BTC-USD", "ETH-USD", "TSLA"]
 
 
 class PaperTradingRunner:
-    """Runs a paper trading simulation using fixture data.
+    """Runs a paper trading simulation.
 
-    Wires all 7 layers together. Uses only fixture data — no live calls.
+    Supports two modes:
+      - Fixture mode (default): uses static JSON data, fully offline.
+      - Live mode: fetches real delayed prices from Yahoo Finance.
 
     Usage::
 
-        runner = PaperTradingRunner(initial_capital=100_000.0, run_days=30)
+        # Fixture mode (offline, deterministic)
+        runner = PaperTradingRunner()
         report = runner.run()
-        assert report["journal_integrity"] == True
+
+        # Live mode (real delayed prices from Yahoo Finance)
+        runner = PaperTradingRunner(live=True)
+        report = runner.run()
     """
 
     def __init__(
@@ -69,6 +77,7 @@ class PaperTradingRunner:
         initial_capital: float = 100_000.0,
         run_days: int = 30,
         threshold: float = 0.5,
+        live: bool = False,
         fixture_path: Path | str = _DEFAULT_FIXTURE,
     ) -> None:
         """
@@ -76,7 +85,9 @@ class PaperTradingRunner:
             initial_capital: Starting cash for the portfolio.
             run_days:        Number of simulated trading days.
             threshold:       SimpleRuleStrategy price_change_pct threshold.
-            fixture_path:    Path to the market tick JSON fixture.
+            live:            If True, use YFinanceProvider for real prices.
+                             If False (default), use fixture data.
+            fixture_path:    Path to fixture JSON (ignored when live=True).
 
         Raises:
             ValueError: If initial_capital <= 0 or run_days < 1.
@@ -87,7 +98,7 @@ class PaperTradingRunner:
             raise ValueError("run_days must be >= 1.")
 
         self._run_days = run_days
-        self._fixture_path = Path(fixture_path)
+        self._live = live
 
         # ------------------------------------------------------------------
         # Wire up all layers
@@ -95,8 +106,17 @@ class PaperTradingRunner:
         self._bus = EventBus()
 
         # L3 — Data
-        self._provider = MarketDataProvider(fixture_path=self._fixture_path)
-        self._normalizer = MarketNormalizer(source="fixture")
+        if live:
+            self._provider: IDataProvider = YFinanceProvider(
+                symbols=_FIXTURE_SYMBOLS,
+                ttl_seconds=60.0,   # cache prices for 60s — safe for Yahoo
+            )
+            self._normalizer = MarketNormalizer(source="yfinance")
+            # Warm the cache with a single batch request before the loop
+            self._provider.warm_cache()  # type: ignore[attr-defined]
+        else:
+            self._provider = MarketDataProvider(fixture_path=Path(fixture_path))
+            self._normalizer = MarketNormalizer(source="fixture")
         self._engineer = FeatureEngineer(window_size=1)
         self._pipeline = DataPipeline(
             provider=self._provider,
@@ -110,14 +130,15 @@ class PaperTradingRunner:
 
         # L5 — Execution
         self._portfolio = Portfolio(initial_cash=initial_capital)
-        # Price feed built from fixture at construction time
-        # Add a small simulated spread so the rule strategy can fire
-        import random
-        random.seed(42)
-        self._price_feed: dict[str, float] = {
-            sym: round(self._provider.fetch(sym).price * (1 + random.uniform(-0.03, 0.03)), 4)
-            for sym in _FIXTURE_SYMBOLS
-        }
+        # Price feed: pull from the already-warmed cache (live) or fetch from fixture
+        import time as _time
+        self._price_feed: dict[str, float] = {}
+        for sym in _FIXTURE_SYMBOLS:
+            try:
+                tick = self._provider.fetch(sym)
+                self._price_feed[sym] = round(tick.price, 4)
+            except Exception:
+                self._price_feed[sym] = 1.0  # fallback placeholder
         self._risk_engine = RiskEngine(
             price_feed=self._price_feed,
             max_position_pct=0.05,
@@ -145,7 +166,7 @@ class PaperTradingRunner:
     def run(self) -> dict:
         """Execute the full paper trading simulation.
 
-        Iterates over symbols × run_days, processing each tick through
+        Iterates over symbols x run_days, processing each tick through
         the full pipeline.
 
         Returns:
@@ -157,6 +178,10 @@ class PaperTradingRunner:
             self._day_counter = day
             for symbol in _FIXTURE_SYMBOLS:
                 self._process_tick(symbol)
+            # In live mode, wait 60s between day cycles to respect rate limits
+            if self._live and day < self._run_days - 1:
+                import time as _t
+                _t.sleep(60)
 
         return self._report_gen.generate(label=f"paper-trading-{label}")
 
