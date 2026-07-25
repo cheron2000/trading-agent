@@ -45,11 +45,13 @@ class PromptBuilder:
         "Do not include any text outside the JSON object."
     )
 
-    def build(self, feature_vector: FeatureVector) -> str:
+    def build(self, feature_vector: FeatureVector, news_context: str = "") -> str:
         """Build a structured prompt from a FeatureVector.
 
         Args:
             feature_vector: Engineered features for a symbol.
+            news_context:   Optional news sentiment string from AVNewsProvider.
+                            Injected after features if provided.
 
         Returns:
             A complete prompt string ready to send to the LLM client.
@@ -65,11 +67,16 @@ class PromptBuilder:
             indent=2,
         )
 
+        news_section = ""
+        if news_context and news_context.strip():
+            news_section = f"\n{news_context.strip()}\n"
+
         return (
             f"{self.SYSTEM_PROMPT}\n\n"
             f"Symbol: {feature_vector.symbol}\n"
             f"Timestamp: {feature_vector.timestamp.isoformat()}\n"
             f"Source quality: {feature_vector.source_quality:.4f}\n"
-            f"Features:\n{features_json}\n\n"
+            f"Features:\n{features_json}\n"
+            f"{news_section}\n"
             f"Respond with JSON only:"
         )

@@ -76,11 +76,12 @@ class LLMAgent:
     def strategy_id(self) -> str:
         return self._strategy_id
 
-    def evaluate(self, feature_vector: FeatureVector) -> Decision:
+    def evaluate(self, feature_vector: FeatureVector, news_context: str = "") -> Decision:
         """Evaluate a feature vector via the LLM and return a Decision.
 
         Args:
             feature_vector: Engineered features for a symbol.
+            news_context:   Optional news sentiment from AVNewsProvider.
 
         Returns:
             Immutable ``Decision`` parsed from the LLM JSON response.
@@ -93,7 +94,7 @@ class LLMAgent:
         if feature_vector is None:
             raise ValueError("feature_vector must not be None.")
 
-        prompt = self._prompt_builder.build(feature_vector)
+        prompt = self._prompt_builder.build(feature_vector, news_context=news_context)
         raw_response = self._client.complete(prompt)
         return self._parse_response(raw_response, feature_vector.symbol)
 
