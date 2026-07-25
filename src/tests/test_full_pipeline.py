@@ -579,6 +579,39 @@ class TestFullEndToEndPipeline:
         view.stop()
         bus.clear()
 
+    def test_runner_logs_buy_fills_in_the_trade_journal(self) -> None:
+        from paper_trading.runner import PaperTradingRunner
+
+        runner = PaperTradingRunner(initial_capital=INITIAL_CASH, run_days=1)
+
+        class FakeProvider:
+            def __init__(self) -> None:
+                self.source_name = "fixture"
+
+            def fetch(self, symbol: str) -> MarketTick:
+                return MarketTick(
+                    symbol=symbol,
+                    price=100.0,
+                    volume=1_000.0,
+                    timestamp=datetime.now(timezone.utc),
+                    source="fixture",
+                )
+
+        runner._provider = FakeProvider()  # type: ignore[assignment]
+        runner._strategy.evaluate = lambda fv: Decision(  # type: ignore[assignment]
+            symbol="AAPL",
+            action="BUY",
+            confidence=0.95,
+            rationale="test",
+            strategy_id="test-strategy",
+        )
+
+        runner._process_tick("AAPL")
+
+        assert runner._journal.entry_count == 1
+        assert runner._journal.verify_integrity() is True
+        assert runner._journal.entries()[0].fill.action == "BUY"
+
     def test_full_pipeline_buy_then_sell_realizes_pnl(self) -> None:
         bus = EventBus()
         portfolio = Portfolio(initial_cash=INITIAL_CASH)

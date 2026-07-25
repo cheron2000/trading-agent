@@ -317,6 +317,8 @@ class PaperTradingRunner:
             fill = self._order_manager.execute(order)
             self._portfolio_tracker.apply_fill(fill)
             self._entry_prices[sym_upper] = fill.fill_price
+            self._metrics.record_fill(fill, entry_price=fill.fill_price)
+            self._journal.record(fill, decision_event)
 
         except Exception as exc:
             import logging

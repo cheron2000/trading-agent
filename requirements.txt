@@ -2,3 +2,6 @@ PyYAML==6.0.3
 yfinance==0.2.54
 requests[socks]==2.32.3
 stem==1.8.2
+alpaca-py==0.21.1
+python-telegram-bot==20.8
+flask==3.0.3

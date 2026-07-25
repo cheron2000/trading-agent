@@ -1,0 +1,145 @@
+# ATLAS — Feature Roadmap Toward Live Trading Readiness
+
+**Prepared for:** Shreyash Irkar
+**Project:** ATLAS (Adaptive Tactical LLM Algorithmic System)
+**Date:** July 20, 2026
+
+**A note before this roadmap:** this document plans the *engineering work* required before a
+system like this should be trusted with real capital. It is not financial advice, and following
+every step here does not guarantee profitability — most individual algorithmic trading
+strategies do not make money after costs, even well-engineered ones. Treat this as a technical
+maturity roadmap, not a promise of return.
+
+---
+
+## 1. Current State (Baseline)
+
+- 7-layer event-driven architecture (Foundation → Communication → Data → Intelligence →
+  Execution → Analytics → Dashboard)
+- ~335 tests, CI/CD pipeline (ruff, black, mypy, pytest, coverage gate)
+- Paper trading only; live trading path explicitly raises `NotImplementedError`
+- Known gap: `TradeJournal.record()` not called on the BUY path (fix required — see Phase 1)
+- No historical backtesting harness yet
+- No walk-forward validation
+- No live broker integration
+- No real risk-of-ruin or position-sizing stress testing yet
+
+---
+
+## 2. Phase 1 — Fix & Instrument (1–2 weeks)
+
+**Goal:** make the system's own reporting trustworthy before building anything on top of it.
+
+| Feature | Why it matters |
+|---|---|
+| Wire `journal.record()` into the BUY path in `runner.py` | Currently BUY fills are invisible to the audit trail — you cannot evaluate a strategy you cannot fully log |
+| Add regression test: `len(journal.entries()) == len(fills)` | Prevents this exact class of bug from recurring silently |
+| Add per-cycle structured logging (decision → risk check → order → fill) | Needed to debug *why* a trade happened, not just *that* it happened |
+| Add a `RunReport` schema with fields: cycles, orders, fills, round trips, win rate, Sharpe, max drawdown, journal integrity | Report should be machine-readable (JSON) as well as printed, so later phases can consume it programmatically |
+
+---
+
+## 3. Phase 2 — Historical Backtesting Harness (3–5 weeks)
+
+**Goal:** test the strategy against years of data, not minutes of live-forward data.
+
+| Feature | Details |
+|---|---|
+| Historical data ingestion | Pull multi-year OHLCV data (start with daily, then intraday) for target symbols. Store locally, versioned, so backtests are reproducible |
+| Backtest engine | Replay historical data through the *same* Intelligence/Execution/Risk layers used in paper trading — no separate "backtest-only" code path, or you risk testing something different from what actually runs |
+| Realistic cost modeling | Add commission, slippage (as a function of order size vs. typical volume), and bid-ask spread. A strategy that's profitable with zero costs is a very different (weaker) claim than one profitable after realistic costs |
+| Benchmark comparison | Compare strategy returns against buy-and-hold and a simple moving-average baseline — if ATLAS doesn't beat a naive baseline, that's important to know early |
+| Performance report generator | Extend `RunReport` (Phase 1) to also work for backtest runs — Sharpe, Sortino, max drawdown, win rate, profit factor, CAGR |
+
+---
+
+## 4. Phase 3 — Walk-Forward Validation (2–4 weeks)
+
+**Goal:** guard against overfitting — the #1 reason backtested strategies fail live.
+
+| Feature | Details |
+|---|---|
+| Rolling train/test split | e.g., train on 6 months, test on the next 1 month, then roll forward. Repeat across the full historical dataset |
+| Parameter stability check | If the strategy needs very different parameters in each window to perform well, that's a sign it's fitting noise, not a real edge |
+| Out-of-sample-only performance reporting | Only trust metrics computed on data the strategy was never tuned on |
+| Regime tagging | Label each test window as trending/ranging/volatile (using something like ADX or realized volatility) and report performance *per regime* — a strategy that only works in one regime is a partial, not general, edge |
+
+---
+
+## 5. Phase 4 — Risk Management Hardening (2–3 weeks)
+
+**Goal:** the system should survive its own worst-case scenarios.
+
+| Feature | Details |
+|---|---|
+| Max daily loss circuit breaker | Auto-halt trading for the day if losses exceed a configured threshold |
+| Max position size / portfolio concentration limits | Prevent any single confidence-weighted signal from over-allocating capital |
+| Correlation-aware sizing | If trading multiple symbols, avoid stacking correlated bets that behave like one oversized position |
+| Kill switch | A single, tested command/flag that immediately halts all new order submission — critical before any live capital |
+| Chaos/edge-case simulation | Simulate a data-feed outage mid-cycle, a flash-crash tick, a stuck order, and a partial fill — confirm the system fails *safely* (no orders, no crash) rather than fails *silently* |
+
+---
+
+## 6. Phase 5 — Extended Paper Trading (8–12+ weeks, running in parallel with Phase 2–4 development)
+
+**Goal:** accumulate enough real forward-looking round trips to trust the win rate/Sharpe numbers statistically.
+
+| Feature | Details |
+|---|---|
+| Always-on paper trading deployment | Needs to run unattended for weeks — implies moving off a Colab notebook to something that stays alive (a small VPS, or a scheduled cloud job) |
+| Alerting on anomalies | Notify (email/Telegram/webhook) on unexpected halts, repeated errors, or drawdown beyond a threshold |
+| Weekly automated performance report | Should land in your inbox automatically — forces you to actually look at the numbers regularly rather than only at the end |
+| Minimum sample size gate | Explicitly define "we need N completed round trips before we even discuss live capital" (a common rule of thumb is *at least* 100+, ideally more, though this doesn't guarantee validity) |
+
+---
+
+## 7. Phase 6 — Live Trading Readiness (only after Phases 1–5 hold up)
+
+**Goal:** the smallest possible first step into real capital, with maximum observability.
+
+| Feature | Details |
+|---|---|
+| Broker/exchange API integration | Separate, explicitly-flagged live execution path (the current `NotImplementedError` guard is good practice — keep an equivalent explicit gate) |
+| Small, disposable starting capital | An amount you could fully lose without it affecting your life — this is a risk-management decision, not a technical one |
+| Live vs. paper performance divergence tracking | Compare live fills against what paper trading would have predicted for the same signals — large divergence means your cost/slippage model was wrong |
+| Manual approval mode before full autonomy | Consider a mode where the system proposes trades but you confirm them, before trusting it to execute unattended |
+
+---
+
+## 8. Phase 7 — Compliance & Operational Tracking (ongoing, start before any live trade)
+
+| Feature | Details |
+|---|---|
+| Trade/tax record export | Every live trade needs a timestamped record (already partially covered by the hash-chained journal) exportable in a format usable for tax filing |
+| Regulatory awareness | Crypto/trading gains are taxable in India and rules can change — this is worth checking with a tax professional before your first live trade, not after |
+
+---
+
+## 9. Suggested Sequencing Summary
+
+```
+Weeks 1–2:    Phase 1 (fix journal bug, instrument reporting)
+Weeks 2–7:    Phase 2 (backtesting harness) — start as soon as Phase 1 report schema exists
+Weeks 6–10:   Phase 3 (walk-forward validation) — overlaps tail of Phase 2
+Weeks 8–11:   Phase 4 (risk hardening) — overlaps Phase 3
+Weeks 3–14+:  Phase 5 (extended paper trading) — runs continuously in parallel, starting once Phase 1 is done
+Week 14+:     Phase 6 (live readiness) — only if Phases 2–5 results are genuinely good
+Ongoing:      Phase 7 (compliance) — set up before Phase 6, not after
+```
+
+Total realistic timeline to a defensible "ready for small live capital" decision: **roughly 3–4
+months of focused work**, and that's the optimistic case where the strategy actually holds up
+through validation. A more common outcome at this stage is discovering the strategy doesn't
+survive walk-forward testing — which is a valuable result, not a failure, since it prevents
+losing real money on an illusion of an edge.
+
+---
+
+## 10. What NOT to do
+
+- Do not skip walk-forward validation because backtest results "look good" — that's the exact
+  trap that causes real losses later.
+- Do not increase live capital just because early results look positive — early live results
+  have high variance and are not yet statistically meaningful.
+- Do not treat this system's engineering quality as evidence of strategy profitability — they
+  are unrelated. A well-tested system can still implement a losing strategy.

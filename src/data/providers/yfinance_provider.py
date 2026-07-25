@@ -217,14 +217,21 @@ class YFinanceProvider:
         """Fetch prices for symbols, using Tor session if available.
 
         When Tor is active, fetches directly via Yahoo Finance JSON API
-        through the Tor SOCKS5 proxy (bypasses yfinance's internal client).
-        Falls back to yf.download when Tor is not configured.
+        through the Tor SOCKS5 proxy. If all Tor attempts fail, falls
+        back to direct yfinance (no proxy) so the system keeps running.
 
         Args:
             symbols: List of ticker symbols to fetch.
         """
         if self._tor is not None:
             self._fetch_via_tor(symbols)
+            # Check if Tor fetch succeeded for all symbols
+            missing = [s for s in symbols if s.upper() not in self._cache]
+            if missing:
+                _log.warning(
+                    "Tor fetch failed for %s — falling back to direct yfinance.", missing
+                )
+                self._fetch_via_yfinance(missing)
         else:
             self._fetch_via_yfinance(symbols)
 
@@ -251,9 +258,14 @@ class YFinanceProvider:
                     data = resp.json()
                     result = data["chart"]["result"][0]
                     timestamps = result.get("timestamp", [])
-                    closes = result["indicators"]["quote"][0]["close"]
-                    volumes = result["indicators"]["quote"][0].get("volume", [0] * len(closes))
-                    price = float(next(v for v in reversed(closes) if v is not None))
+                    quote_data = result["indicators"]["quote"][0]
+                    closes = quote_data.get("close") or []
+                    volumes = quote_data.get("volume") or [0] * len(closes)
+                    # Filter out None values (common pre-market / crypto gaps)
+                    valid_closes = [v for v in closes if v is not None]
+                    if not valid_closes:
+                        raise ValueError(f"No valid close prices in response for {sym}")
+                    price = float(valid_closes[-1])
                     volume = float(next((v for v in reversed(volumes) if v is not None), 0.0))
                     self._cache[sym] = (price, volume, now_dt, now_epoch)
 
@@ -280,10 +292,13 @@ class YFinanceProvider:
                     if recent:
                         self._recent_cache[sym] = recent[-self._HISTORY_LEN:]
                     break
-                except Exception:
-                    _log.warning("Tor fetch failed for %s (attempt %d)", sym, attempt + 1, exc_info=True)
+                except Exception as exc:
+                    _log.warning("Tor fetch failed for %s (attempt %d): %s", sym, attempt + 1, exc)
                     if attempt < self._MAX_RETRIES - 1:
-                        self._tor.rotate_ip()
+                        try:
+                            self._tor.rotate_ip()
+                        except Exception:
+                            pass
                         time.sleep(10)
 
     def _fetch_via_yfinance(self, symbols: list[str]) -> None:

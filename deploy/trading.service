@@ -1,0 +1,33 @@
+[Unit]
+Description=AI Trading OS — Live Paper Trading (24/7)
+After=network-online.target tor.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=trading
+WorkingDirectory=/opt/ai-trading-os
+
+# Python path includes src/ for module resolution
+Environment="PYTHONPATH=/opt/ai-trading-os/src"
+Environment="PYTHONUNBUFFERED=1"
+
+# Run as a 24-hour session, restart automatically when it finishes
+# --minutes 1440 = 24 hours per run cycle
+ExecStart=/opt/ai-trading-os/.venv/bin/python run_hour.py --minutes 1440
+
+# Always restart — covers both crashes and normal completion
+Restart=always
+RestartSec=10
+
+# Logging goes to systemd journal (view with: journalctl -u ai-trading -f)
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=ai-trading
+
+# Resource limits (safe for t3.micro with 1GB RAM)
+MemoryMax=512M
+CPUQuota=50%
+
+[Install]
+WantedBy=multi-user.target
