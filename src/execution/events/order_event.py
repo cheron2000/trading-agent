@@ -23,6 +23,6 @@ class OrderEvent(BaseEvent):
             raise ValueError("order must not be None.")
 
     def to_dict(self) -> dict[str, object]:
-        base = super().to_dict()
+        base = BaseEvent.to_dict(self)
         base["order"] = self.order.to_dict()
         return base

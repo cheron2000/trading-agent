@@ -44,7 +44,7 @@ class FillEvent(BaseEvent):
             raise ValueError("fill_price must be > 0.")
 
     def to_dict(self) -> dict[str, object]:
-        base = super().to_dict()
+        base = BaseEvent.to_dict(self)
         ts = self.timestamp
         if ts.tzinfo is None:
             ts = ts.replace(tzinfo=timezone.utc)

@@ -55,7 +55,7 @@ class DecisionEvent(BaseEvent):
             raise ValueError("strategy_id must not be empty.")
 
     def to_dict(self) -> dict[str, object]:
-        base = super().to_dict()
+        base = BaseEvent.to_dict(self)
         base.update({
             "symbol": self.symbol,
             "action": self.action,

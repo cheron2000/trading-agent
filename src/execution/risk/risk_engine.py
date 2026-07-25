@@ -32,7 +32,12 @@ class RiskEngine:
       3. symbol not in price_feed → reject
       4. quantity = (cash * max_position_pct) / price
       5. quantity < MIN_QUANTITY → reject
-      6. Return approved Order
+      6. (positions_value + new order cost) / equity > max_total_exposure_pct
+         → reject. Caps how much of total equity can be committed across
+         *all* open positions combined, not just this one order — without
+         this, several per-symbol-capped buys in the same cycle can still
+         stack into an outsized total exposure.
+      7. Return approved Order
     """
 
     MIN_QUANTITY: ClassVar[float] = 0.01
@@ -42,12 +47,18 @@ class RiskEngine:
         price_feed: dict[str, float],
         max_position_pct: float = 0.10,
         min_confidence: float = 0.60,
+        max_total_exposure_pct: float = 0.60,
     ) -> None:
         """
         Args:
-            price_feed:       Symbol → current price mapping.
-            max_position_pct: Max fraction of cash per position (0–1).
-            min_confidence:   Minimum confidence to approve (0–1).
+            price_feed:             Symbol → current price mapping.
+            max_position_pct:       Max fraction of cash per position (0–1).
+            min_confidence:         Minimum confidence to approve (0–1).
+            max_total_exposure_pct: Max fraction of total equity
+                                     (cash + all positions, marked to
+                                     current price_feed) that may be
+                                     committed across all open positions
+                                     combined, including the new order.
 
         Raises:
             ValueError: On invalid parameter ranges.
@@ -56,10 +67,13 @@ class RiskEngine:
             raise ValueError("max_position_pct must be in (0, 1].")
         if not (0.0 <= min_confidence <= 1.0):
             raise ValueError("min_confidence must be in [0, 1].")
+        if not (0.0 < max_total_exposure_pct <= 1.0):
+            raise ValueError("max_total_exposure_pct must be in (0, 1].")
 
         self._price_feed = price_feed
         self._max_position_pct = max_position_pct
         self._min_confidence = min_confidence
+        self._max_total_exposure_pct = max_total_exposure_pct
 
     # ------------------------------------------------------------------
     # Public API
@@ -104,6 +118,16 @@ class RiskEngine:
         if quantity < self.MIN_QUANTITY:
             return None
 
+        # Gate 6 — aggregate portfolio exposure cap
+        cost = quantity * price
+        positions_value = self._positions_value(portfolio)
+        equity = portfolio.cash + positions_value
+        if equity <= 0:
+            return None
+        projected_exposure = (positions_value + cost) / equity
+        if projected_exposure > self._max_total_exposure_pct:
+            return None
+
         return Order(
             symbol=symbol,
             action=decision.action,  # type: ignore[arg-type]
@@ -112,3 +136,20 @@ class RiskEngine:
             strategy_id=decision.strategy_id,
             timestamp=datetime.now(timezone.utc),
         )
+
+    # ------------------------------------------------------------------
+    # Internal helpers
+    # ------------------------------------------------------------------
+
+    def _positions_value(self, portfolio: Portfolio) -> float:
+        """Mark all open positions to current price_feed prices.
+
+        Falls back to each position's average entry price if a symbol
+        is not currently in price_feed, rather than dropping it from
+        the exposure calculation.
+        """
+        total = 0.0
+        for symbol, (qty, avg_price) in portfolio.all_positions().items():
+            mark = self._price_feed.get(symbol, avg_price)
+            total += qty * mark
+        return total

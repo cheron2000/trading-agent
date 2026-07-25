@@ -53,7 +53,7 @@ class FeatureVectorEvent(BaseEvent):
 
     def to_dict(self) -> dict[str, object]:
         """Extend BaseEvent serialization with Data layer fields."""
-        base = super().to_dict()
+        base = BaseEvent.to_dict(self)
         base.update(
             {
                 "symbol": self.symbol,

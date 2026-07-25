@@ -44,8 +44,6 @@ print(f"{'='*60}\n")
 from communication.bus.event_bus import EventBus
 from communication.bus.rate_limiter import RateLimiter
 from data.features.feature_engineer import FeatureEngineer
-from data.models.market_tick import MarketTick
-from data.normalizers.market_normalizer import MarketNormalizer
 from data.providers.yfinance_provider import YFinanceProvider
 from intelligence.events.decision_event import DecisionEvent
 from intelligence.strategies.rule_based import SimpleRuleStrategy
@@ -58,8 +56,6 @@ from analytics.journal.trade_journal import TradeJournal
 from analytics.metrics.metrics_engine import MetricsEngine
 from analytics.reports.report_generator import ReportGenerator
 from data.events.feature_vector_event import FeatureVectorEvent
-from datetime import timedelta
-import random
 import logging
 
 logging.basicConfig(level=logging.WARNING)
@@ -125,18 +121,8 @@ while not shutdown:
             tick = provider.fetch(symbol)
             price_feed[symbol] = tick.price
 
-            # Build synthetic 5-tick window
-            rng = random.Random(hash(symbol) ^ cycle)
-            ticks = [
-                MarketTick(
-                    symbol=symbol,
-                    price=round(tick.price * (1 + rng.uniform(-0.015, 0.015)), 4),
-                    volume=tick.volume,
-                    timestamp=now - timedelta(minutes=5 - i),
-                    source=tick.source,
-                )
-                for i in range(5)
-            ]
+            # Real 5-tick lookback window (no fabricated/synthetic prices).
+            ticks = provider.fetch_recent(symbol, n=5)
 
             fv = engineer.compute(ticks)
             fv_event = FeatureVectorEvent(
