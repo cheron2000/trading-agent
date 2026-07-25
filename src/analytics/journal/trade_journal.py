@@ -15,8 +15,10 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import ClassVar
 
 from execution.events.fill_event import FillEvent
@@ -73,8 +75,23 @@ class TradeJournal:
 
     GENESIS_HASH: ClassVar[str] = "0" * 64
 
-    def __init__(self) -> None:
+    def __init__(self, persist_path: str | Path | None = None) -> None:
+        """
+        Args:
+            persist_path:
+                Optional path to a JSONL file. If provided, every
+                ``record()`` call appends the new entry to this file
+                immediately (flushed + fsynced) before returning, so
+                a crash right after a fill still leaves a durable,
+                replayable audit trail on disk. Defaults to None
+                (pure in-memory, no I/O — existing behavior).
+        """
         self._entries: list[JournalEntry] = []
+        self._persist_path: Path | None = (
+            Path(persist_path) if persist_path is not None else None
+        )
+        if self._persist_path is not None:
+            self._persist_path.parent.mkdir(parents=True, exist_ok=True)
 
     # ------------------------------------------------------------------
     # Public API
@@ -125,6 +142,8 @@ class TradeJournal:
             prev_hash=prev_hash,
         )
         self._entries.append(entry)
+        if self._persist_path is not None:
+            self._append_to_disk(entry)
         return entry
 
     def entries(self) -> list[JournalEntry]:
@@ -161,9 +180,88 @@ class TradeJournal:
         """Return the number of recorded entries."""
         return len(self._entries)
 
+    @classmethod
+    def load_from_file(cls, path: str | Path) -> "TradeJournal":
+        """Reconstruct a TradeJournal by replaying a persisted JSONL file.
+
+        Lets a resumed session extend the same durable hash chain
+        instead of starting over at genesis, and lets verify_integrity()
+        check the full persisted history — not just what's been
+        recorded in the current process's lifetime.
+
+        Args:
+            path: Path to a JSONL file previously written by this class.
+                  If it doesn't exist yet, returns an empty journal that
+                  will create the file on first ``record()``.
+
+        Returns:
+            A ``TradeJournal`` with all persisted entries loaded and
+            ``persist_path`` set to ``path``, so further ``record()``
+            calls keep appending to the same file.
+
+        Raises:
+            ValueError: If a line in the file is malformed.
+        """
+        path = Path(path)
+        journal = cls(persist_path=path)
+        if not path.exists():
+            return journal
+
+        with path.open("r", encoding="utf-8") as fh:
+            for line_no, line in enumerate(fh, start=1):
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    data = json.loads(line)
+                    fill_data = data["fill"]
+                    fill = FillEvent(
+                        event_type=fill_data["event_type"],
+                        event_id=fill_data["event_id"],
+                        occurred_at=datetime.fromisoformat(fill_data["occurred_at"]),
+                        schema_version=fill_data["schema_version"],
+                        correlation_id=fill_data["correlation_id"],
+                        causation_id=fill_data["causation_id"],
+                        order_id=fill_data["order_id"],
+                        symbol=fill_data["symbol"],
+                        action=fill_data["action"],
+                        quantity=fill_data["quantity"],
+                        fill_price=fill_data["fill_price"],
+                        timestamp=datetime.fromisoformat(fill_data["fill_timestamp"]),
+                    )
+                    entry = JournalEntry(
+                        sequence=data["sequence"],
+                        timestamp=datetime.fromisoformat(data["timestamp"]),
+                        fill=fill,
+                        decision_id=data["decision_id"],
+                        strategy_id=data["strategy_id"],
+                        entry_hash=data["entry_hash"],
+                        prev_hash=data["prev_hash"],
+                    )
+                except (KeyError, ValueError, TypeError) as exc:
+                    raise ValueError(
+                        f"Malformed journal entry at {path}:{line_no}: {exc}"
+                    ) from exc
+                journal._entries.append(entry)
+
+        return journal
+
     # ------------------------------------------------------------------
     # Internal helpers
     # ------------------------------------------------------------------
+
+    def _append_to_disk(self, entry: JournalEntry) -> None:
+        """Append one entry as a JSON line, flushed and fsynced.
+
+        This is a write-ahead style append: the entry is durably on
+        disk before ``record()`` returns, so a crash immediately after
+        a fill still leaves an audit trail instead of losing it.
+        """
+        line = json.dumps(entry.to_dict(), sort_keys=True)
+        with open(self._persist_path, "a", encoding="utf-8") as fh:
+            fh.write(line + "\n")
+            fh.flush()
+            os.fsync(fh.fileno())
 
     @staticmethod
     def _compute_hash(

@@ -13,6 +13,7 @@ import sys
 import time
 import signal
 from datetime import datetime, timezone
+from pathlib import Path
 
 sys.path.insert(0, "src")
 
@@ -29,6 +30,7 @@ for i, arg in enumerate(sys.argv):
 
 duration_seconds = duration_minutes * 60
 started_at = datetime.now(timezone.utc)
+run_label = started_at.strftime("live-run-%Y-%m-%d-%H%M")
 
 print(f"\n{'='*60}")
 print(f"  AI Trading OS — Live 1-Hour Paper Trading Run")
@@ -71,7 +73,7 @@ bus = EventBus(rate_limiter=_rl)
 
 # L3 Data
 provider = YFinanceProvider(symbols=SYMBOLS, ttl_seconds=55.0, use_tor=True)
-engineer = FeatureEngineer(window_size=1)
+engineer = FeatureEngineer(window_size=5)
 
 # L4 Intelligence
 strategy = SimpleRuleStrategy(threshold=0.3)  # lower threshold = more trades
@@ -85,8 +87,10 @@ tracker = PortfolioTracker(portfolio)
 
 # L6 Analytics
 metrics = MetricsEngine(initial_capital=capital)
-journal = TradeJournal()
+journal_path = Path(__file__).parent / "data_store" / "live" / f"journal-{run_label}.jsonl"
+journal = TradeJournal.load_from_file(journal_path)
 report_gen = ReportGenerator(metrics, journal)
+print(f"Journal persisting to: {journal_path}\n")
 
 entry_prices: dict[str, float] = {}
 cycle = 0
@@ -196,7 +200,7 @@ while not shutdown:
 
 # --- Final Report ---
 ended_at = datetime.now(timezone.utc)
-label = started_at.strftime("live-run-%Y-%m-%d-%H%M")
+label = run_label
 report = report_gen.generate(label=label)
 m = report["metrics"]
 

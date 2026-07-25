@@ -18,6 +18,7 @@ Python Version: 3.11+
 from __future__ import annotations
 
 import fnmatch
+import logging
 import threading
 from typing import Callable
 from uuid import uuid4
@@ -28,6 +29,8 @@ from communication.models.event_priority import EventPriority
 from communication.models.event_metadata import EventMetadata
 from communication.models.subscription import Subscription
 from communication.interfaces.i_event_bus import IEventBus
+
+_log = logging.getLogger(__name__)
 
 
 class EventBus:
@@ -94,8 +97,17 @@ class EventBus:
 
         # Invoke handlers outside the lock to prevent deadlocks
         # if a handler calls publish/subscribe recursively.
+        # Each handler is isolated: one raising must not prevent
+        # delivery to the remaining subscribers for this event.
         for handler in matching:
-            handler(event)
+            try:
+                handler(event)
+            except Exception:
+                _log.exception(
+                    "Event handler raised for event_type=%s — "
+                    "continuing delivery to remaining subscribers.",
+                    event.event_type,
+                )
 
     def subscribe(
         self,

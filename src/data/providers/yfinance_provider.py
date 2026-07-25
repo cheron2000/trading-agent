@@ -161,15 +161,18 @@ class YFinanceProvider:
         request — never fabricated or synthetically perturbed data.
         Most recent tick is last.
 
+        Deliberately does NOT pad short windows with duplicated ticks:
+        if fewer than ``n`` real observations exist, fewer are returned.
+        This lets FeatureEngineer's source_quality (len(ticks)/window_size)
+        genuinely reflect thin data instead of always reporting 1.0.
+
         Args:
             symbol: Canonical ticker symbol.
-            n:      Number of recent ticks requested.
+            n:      Maximum number of recent ticks requested.
 
         Returns:
-            Up to ``n`` real ``MarketTick`` objects, oldest first. If
-            fewer than ``n`` real observations are available (e.g. thin
-            trading or a fresh cache), the earliest real tick is repeated
-            to pad the window rather than inventing prices.
+            Up to ``n`` real ``MarketTick`` objects, oldest first, and
+            never fewer than 1.
 
         Raises:
             ValueError: If symbol is empty or no data is available at all.
@@ -186,14 +189,9 @@ class YFinanceProvider:
 
         if not recent:
             # No history array available (e.g. sparse Tor response) —
-            # fall back to the single latest real tick, padded, rather
-            # than raising or fabricating synthetic prices.
-            latest = self.fetch(sym)
-            return [latest] * n
-
-        if len(recent) < n:
-            pad = [recent[0]] * (n - len(recent))
-            recent = pad + recent
+            # fall back to the single latest real tick rather than
+            # raising or fabricating synthetic prices.
+            return [self.fetch(sym)]
 
         return recent[-n:]
 
