@@ -84,6 +84,55 @@ def create_app() -> Flask:
 
     # ── Interactive Control APIs ────────────────────────────────────────────────
 
+    @app.route("/api/internal/update", methods=["POST"])
+    def internal_update():
+        """Receive state updates from trading loop process running run_hour.py."""
+        data = request.get_json(silent=True) or {}
+        cmd = data.get("action")
+        payload = data.get("payload", {})
+
+        if cmd == "set_running":
+            set_running(payload.get("running", False), payload.get("capital", 100000.0), payload.get("symbols"), _remote_sync=False)
+        elif cmd == "update_portfolio":
+            update_portfolio(
+                payload.get("portfolio_value", 0.0),
+                payload.get("cash", 0.0),
+                payload.get("positions", []),
+                payload.get("realized_pnl", 0.0),
+                payload.get("total_return_pct", 0.0),
+                _remote_sync=False,
+            )
+        elif cmd == "update_metrics":
+            update_metrics(
+                payload.get("total_trades", 0),
+                payload.get("total_pnl", 0.0),
+                payload.get("total_return", 0.0),
+                payload.get("win_rate", 0.0),
+                payload.get("sharpe_ratio", 0.0),
+                payload.get("max_drawdown", 0.0),
+                _remote_sync=False,
+            )
+        elif cmd == "record_chart_point":
+            from dashboard.web.dashboard_state import record_chart_point
+            record_chart_point(payload.get("cycle", 0), payload.get("portfolio_value", 0.0), payload.get("pnl", 0.0), _remote_sync=False)
+        elif cmd == "set_cycle":
+            from dashboard.web.dashboard_state import set_cycle
+            set_cycle(payload.get("cycle", 0), _remote_sync=False)
+        elif cmd == "add_trade":
+            from dashboard.web.dashboard_state import add_trade
+            add_trade(payload, _remote_sync=False)
+        elif cmd == "add_decision":
+            from dashboard.web.dashboard_state import add_decision
+            add_decision(payload, _remote_sync=False)
+        elif cmd == "set_news":
+            from dashboard.web.dashboard_state import set_news
+            set_news(payload.get("symbol", ""), payload.get("text", ""), _remote_sync=False)
+        elif cmd == "add_warning":
+            from dashboard.web.dashboard_state import add_warning
+            add_warning(payload.get("source", ""), payload.get("message", ""), _remote_sync=False)
+
+        return jsonify({"status": "success"})
+
     @app.route("/api/control/tick", methods=["POST"])
     def control_tick():
         """Trigger an immediate manual cycle evaluation."""

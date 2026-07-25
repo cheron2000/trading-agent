@@ -64,7 +64,7 @@ logging.basicConfig(level=logging.WARNING)
 # Suppress stem control-port socket close noise (expected cleanup messages)
 logging.getLogger("stem").setLevel(logging.ERROR)
 
-SYMBOLS = ["AAPL", "MSFT", "GOOGL", "TSLA"]  # US equities only — market open 7PM-1:30AM IST
+SYMBOLS = ["AAPL", "MSFT", "GOOGL", "TSLA", "BTC-USD"]  # Added crypto for 24/7 market coverage
 # EventBus + RateLimiter
 _rl = RateLimiter(default_rate=1000.0, default_capacity=2000.0)
 _rl.set_limit("data", rate=500.0, capacity=1000.0)
@@ -272,7 +272,7 @@ while not shutdown:
 
             # Print news being sent to AI
             if news_context:
-                print(f"  \U0001f4f0 {symbol} news -> AI:")
+                print(f"  [NEWS] {symbol} news -> AI:")
                 for line in news_context.split("\n"):
                     print(f"     {line}")
                 if _dashboard_enabled:
@@ -281,7 +281,7 @@ while not shutdown:
             decision = evaluate_with_fallback(fv, news_context=news_context)
 
             # Print AI response
-            print(f"  \U0001f916 {symbol}: {decision.action} (confidence={decision.confidence:.2f}) | {decision.rationale[:90]}")
+            print(f"  [AI] {symbol}: {decision.action} (confidence={decision.confidence:.2f}) | {decision.rationale[:90]}")
             if _dashboard_enabled:
                 add_decision({
                     "symbol": decision.symbol,
