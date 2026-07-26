@@ -19,9 +19,9 @@ import sys
 from datetime import datetime, timezone
 from typing import ClassVar
 
-from foundation.base_event import BaseEvent
 from communication.interfaces.i_event_bus import IEventBus
 from communication.models.subscription import Subscription
+from foundation.base_event import BaseEvent
 
 
 class LiveView:

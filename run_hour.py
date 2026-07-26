@@ -9,9 +9,10 @@ Usage:
     py -3 run_hour.py --capital 50000
     py -3 run_hour.py --minutes 30
 """
-import sys
-import time
 import signal
+import sys
+import threading
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -33,32 +34,35 @@ started_at = datetime.now(timezone.utc)
 run_label = started_at.strftime("live-run-%Y-%m-%d-%H%M")
 
 print(f"\n{'='*60}")
-print(f"  AI Trading OS — Live 1-Hour Paper Trading Run")
+print("  AI Trading OS — Live 1-Hour Paper Trading Run")
 print(f"{'='*60}")
 print(f"  Capital:    ${capital:,.2f}")
 print(f"  Duration:   {duration_minutes} minutes")
 print(f"  Interval:   {fetch_interval}s between cycles")
 print(f"  Started:    {started_at.strftime('%Y-%m-%d %H:%M:%S UTC')}")
-print(f"  Mode:       LIVE + TOR")
+print("  Mode:       LIVE + TOR")
 print(f"{'='*60}\n")
 
 # --- Wire up the pipeline (same as runner.py but we control the loop) ---
-from communication.bus.event_bus import EventBus
-from communication.bus.rate_limiter import RateLimiter
-from data.features.feature_engineer import FeatureEngineer
-from data.providers.yfinance_provider import YFinanceProvider
-from intelligence.events.decision_event import DecisionEvent
-from intelligence.strategies.rule_based import SimpleRuleStrategy
-from execution.engine.order_manager import OrderManager
-from execution.engine.portfolio_tracker import PortfolioTracker
-from execution.models.portfolio import Portfolio
-from execution.models.order import Order
-from execution.risk.risk_engine import RiskEngine
+import logging
+
 from analytics.journal.trade_journal import TradeJournal
 from analytics.metrics.metrics_engine import MetricsEngine
 from analytics.reports.report_generator import ReportGenerator
+from communication.bus.event_bus import EventBus
+from communication.bus.rate_limiter import RateLimiter
+from dashboard.web.app import create_app
+from dashboard.web.dashboard_state import DashboardState
 from data.events.feature_vector_event import FeatureVectorEvent
-import logging
+from data.features.feature_engineer import FeatureEngineer
+from data.providers.yfinance_provider import YFinanceProvider
+from execution.engine.order_manager import OrderManager
+from execution.engine.portfolio_tracker import PortfolioTracker
+from execution.models.order import Order
+from execution.models.portfolio import Portfolio
+from execution.risk.risk_engine import RiskEngine
+from intelligence.events.decision_event import DecisionEvent
+from intelligence.strategies.rule_based import SimpleRuleStrategy
 
 logging.basicConfig(level=logging.WARNING)
 
@@ -104,6 +108,19 @@ def _handle_signal(sig, frame):
     print("\n\n[!] Interrupted — generating final report...\n")
     shutdown = True
 signal.signal(signal.SIGINT, _handle_signal)
+
+# --- Web Dashboard ---
+dash_state = DashboardState()
+for _pattern in ("data.feature_vector", "intelligence.decision", "execution.fill"):
+    bus.subscribe(_pattern, dash_state.record_event)
+
+_dash_app = create_app(dash_state)
+_dash_thread = threading.Thread(
+    target=lambda: _dash_app.run(host="127.0.0.1", port=5000, debug=False, use_reloader=False),
+    daemon=True,
+)
+_dash_thread.start()
+print("Dashboard running at: http://127.0.0.1:5000\n")
 
 # --- Main loop ---
 print("Warming cache (first batch fetch)...")
@@ -172,6 +189,7 @@ while not shutdown:
                 )
                 fill = order_manager.execute(sell_order)
                 tracker.apply_fill(fill)
+                bus.publish(fill)
                 ep = entry_prices.pop(sym, fill.fill_price)
                 pnl = (fill.fill_price - ep) * fill.quantity
                 metrics.record_fill(fill, entry_price=ep)
@@ -185,12 +203,19 @@ while not shutdown:
                     continue
                 fill = order_manager.execute(order)
                 tracker.apply_fill(fill)
+                bus.publish(fill)
                 entry_prices[sym] = fill.fill_price
                 total_buy += 1
                 print(f"  BUY  {sym:<10} qty={fill.quantity:.4f} @ ${fill.fill_price:.2f}")
 
         except Exception as exc:
             print(f"  [WARN] {symbol}: {exc}")
+
+    # Feed the web dashboard (metrics/positions are pull-based, not events)
+    m = metrics.compute()
+    dash_state.update_metrics({**m.to_dict(), "initial_capital": capital, "equity": capital + m.total_pnl})
+    dash_state.update_positions(portfolio.all_positions())
+    dash_state.tick(cycle)
 
     # Wait for next cycle (skip wait on last cycle)
     elapsed_after = (datetime.now(timezone.utc) - started_at).total_seconds()
