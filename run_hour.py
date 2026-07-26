@@ -123,9 +123,10 @@ _dash_thread.start()
 print("Dashboard running at: http://127.0.0.1:5000\n")
 
 # --- Main loop ---
-print("Warming cache (first batch fetch)...")
-provider.warm_cache()
-print("Cache warmed. Starting trading loop.\n")
+warm_cache_budget = min(60.0, max(10.0, duration_seconds * 0.5))
+print(f"Warming cache (first batch fetch, budget {warm_cache_budget:.0f}s)...")
+provider.warm_cache(timeout_seconds=warm_cache_budget, should_stop=lambda: shutdown)
+print("Cache warm-up finished (see warnings above if it hit its time budget).\n")
 
 while not shutdown:
     elapsed = (datetime.now(timezone.utc) - started_at).total_seconds()

@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import logging
 import time
+from collections.abc import Callable
 from datetime import datetime, timezone
 from typing import ClassVar
 
@@ -86,6 +87,7 @@ class YFinanceProvider:
         self._tor = None
         if use_tor:
             import os
+
             from data.providers.tor_session import TorProxySession
             self._tor = TorProxySession(control_password=tor_control_password)
             # Set env-level proxy so yfinance's internal requests picks it up
@@ -195,7 +197,12 @@ class YFinanceProvider:
 
         return recent[-n:]
 
-    def warm_cache(self, symbols: list[str] | None = None) -> None:
+    def warm_cache(
+        self,
+        symbols: list[str] | None = None,
+        timeout_seconds: float | None = None,
+        should_stop: Callable[[], bool] | None = None,
+    ) -> None:
         """Batch-fetch prices for all known symbols in one request.
 
         Call this once before the simulation loop to pre-populate
@@ -203,17 +210,39 @@ class YFinanceProvider:
 
         Args:
             symbols: Override the symbol list. Defaults to self._symbols.
+            timeout_seconds: Overall wall-clock budget for warming the
+                cache across ALL symbols combined. Without this, total
+                network failure across every symbol can silently
+                consume far more time than a caller's whole configured
+                run duration (3 retries x 15s timeout x N symbols,
+                plus backoff sleeps) before a single trading cycle
+                ever runs. None preserves the old unbounded behavior.
+            should_stop: Optional callable checked between attempts/
+                symbols/sleeps; if it returns True, warming stops
+                immediately. Wire this to a shutdown flag so Ctrl+C
+                is responsive during startup, not just once the main
+                loop is reached.
         """
         syms = [s.upper() for s in (symbols or self._symbols)]
         if not syms:
             return
-        self._fetch_batch(syms)
+        deadline = (
+            time.monotonic() + timeout_seconds
+            if timeout_seconds is not None
+            else None
+        )
+        self._fetch_batch(syms, deadline=deadline, should_stop=should_stop)
 
     # ------------------------------------------------------------------
     # Internal helpers
     # ------------------------------------------------------------------
 
-    def _fetch_batch(self, symbols: list[str]) -> None:
+    def _fetch_batch(
+        self,
+        symbols: list[str],
+        deadline: float | None = None,
+        should_stop: Callable[[], bool] | None = None,
+    ) -> None:
         """Fetch prices for symbols, using Tor session if available.
 
         When Tor is active, fetches directly via Yahoo Finance JSON API
@@ -222,19 +251,65 @@ class YFinanceProvider:
 
         Args:
             symbols: List of ticker symbols to fetch.
+            deadline: Optional time.monotonic() cutoff; retries stop
+                early once reached instead of blocking indefinitely.
+            should_stop: Optional callable checked between attempts;
+                stops immediately if it returns True.
         """
         if self._tor is not None:
-            self._fetch_via_tor(symbols)
+            self._fetch_via_tor(symbols, deadline=deadline, should_stop=should_stop)
         else:
-            self._fetch_via_yfinance(symbols)
+            self._fetch_via_yfinance(symbols, deadline=deadline, should_stop=should_stop)
 
-    def _fetch_via_tor(self, symbols: list[str]) -> None:
+    @staticmethod
+    def _should_abort(
+        deadline: float | None, should_stop: Callable[[], bool] | None
+    ) -> bool:
+        """Return True if the time budget is spent or a stop was requested."""
+        if deadline is not None and time.monotonic() >= deadline:
+            return True
+        return should_stop is not None and should_stop()
+
+    @classmethod
+    def _interruptible_sleep(
+        cls,
+        duration: float,
+        deadline: float | None,
+        should_stop: Callable[[], bool] | None,
+    ) -> None:
+        """Sleep in short slices, checking deadline/should_stop between
+        each one, so a shutdown signal or expired budget interrupts a
+        wait almost immediately instead of blocking for the full duration.
+        """
+        remaining = duration
+        slice_seconds = 0.5
+        while remaining > 0:
+            if cls._should_abort(deadline, should_stop):
+                return
+            step = min(slice_seconds, remaining)
+            time.sleep(step)
+            remaining -= step
+
+    def _fetch_via_tor(
+        self,
+        symbols: list[str],
+        deadline: float | None = None,
+        should_stop: Callable[[], bool] | None = None,
+    ) -> None:
         """Fetch prices via Yahoo Finance JSON API through Tor session."""
         now_epoch = time.monotonic()
         now_dt = datetime.now(timezone.utc)
         session = self._tor.session
         for sym in symbols:
+            if self._should_abort(deadline, should_stop):
+                _log.warning(
+                    "warm_cache: time budget/stop signal hit before symbol %s — "
+                    "skipping remaining symbols.", sym,
+                )
+                return
             for attempt in range(self._MAX_RETRIES):
+                if self._should_abort(deadline, should_stop):
+                    return
                 try:
                     url = (
                         f"https://query1.finance.yahoo.com/v8/finance/chart/{sym}"
@@ -245,7 +320,7 @@ class YFinanceProvider:
                     })
                     if resp.status_code == 429:
                         self._tor.rotate_ip()
-                        time.sleep(10)
+                        self._interruptible_sleep(10, deadline, should_stop)
                         continue
                     resp.raise_for_status()
                     data = resp.json()
@@ -284,13 +359,21 @@ class YFinanceProvider:
                     _log.warning("Tor fetch failed for %s (attempt %d)", sym, attempt + 1, exc_info=True)
                     if attempt < self._MAX_RETRIES - 1:
                         self._tor.rotate_ip()
-                        time.sleep(10)
+                        self._interruptible_sleep(10, deadline, should_stop)
 
-    def _fetch_via_yfinance(self, symbols: list[str]) -> None:
+    def _fetch_via_yfinance(
+        self,
+        symbols: list[str],
+        deadline: float | None = None,
+        should_stop: Callable[[], bool] | None = None,
+    ) -> None:
         """Batch download via yf.download with exponential backoff."""
         tickers = " ".join(symbols)
         delay = 2.0
         for attempt in range(self._MAX_RETRIES):
+            if self._should_abort(deadline, should_stop):
+                _log.warning("warm_cache: time budget/stop signal hit — aborting yfinance fetch.")
+                return
             try:
                 data = self._yf.download(
                     tickers=tickers,
@@ -317,7 +400,7 @@ class YFinanceProvider:
                 err_str = str(exc).lower()
                 is_rate_limit = "too many requests" in err_str or "429" in err_str
                 if is_rate_limit and attempt < self._MAX_RETRIES - 1:
-                    time.sleep(delay)
+                    self._interruptible_sleep(delay, deadline, should_stop)
                     delay *= 2
                     continue
                 return
