@@ -103,7 +103,12 @@ class YFinanceProvider:
     def source_name(self) -> str:
         return self.SOURCE_NAME
 
-    def fetch(self, symbol: str) -> MarketTick:
+    def fetch(
+        self,
+        symbol: str,
+        timeout_seconds: float | None = None,
+        should_stop: Callable[[], bool] | None = None,
+    ) -> MarketTick:
         """Return the latest MarketTick for a symbol.
 
         Returns cached data if it is within the TTL window.
@@ -111,6 +116,12 @@ class YFinanceProvider:
 
         Args:
             symbol: Canonical ticker symbol.
+            timeout_seconds: Optional wall-clock budget for this
+                fetch's retries (see warm_cache() docstring for why
+                this matters under sustained network failure). None
+                preserves the old unbounded retry behavior.
+            should_stop: Optional callable checked between retries;
+                stops immediately if it returns True.
 
         Returns:
             Immutable ``MarketTick``.
@@ -138,7 +149,12 @@ class YFinanceProvider:
                 )
 
         # Cache miss or stale — fetch fresh data with backoff
-        self._fetch_batch([sym])
+        deadline = (
+            time.monotonic() + timeout_seconds
+            if timeout_seconds is not None
+            else None
+        )
+        self._fetch_batch([sym], deadline=deadline, should_stop=should_stop)
 
         entry = self._cache.get(sym)
         if entry is None:
@@ -155,7 +171,13 @@ class YFinanceProvider:
             source=self.SOURCE_NAME,
         )
 
-    def fetch_recent(self, symbol: str, n: int = 5) -> list[MarketTick]:
+    def fetch_recent(
+        self,
+        symbol: str,
+        n: int = 5,
+        timeout_seconds: float | None = None,
+        should_stop: Callable[[], bool] | None = None,
+    ) -> list[MarketTick]:
         """Return up to the last ``n`` real MarketTicks for a symbol.
 
         Unlike ``fetch``, which only returns the latest price, this
@@ -171,6 +193,11 @@ class YFinanceProvider:
         Args:
             symbol: Canonical ticker symbol.
             n:      Maximum number of recent ticks requested.
+            timeout_seconds: Optional wall-clock budget for the
+                underlying fetch's retries. None preserves the old
+                unbounded retry behavior.
+            should_stop: Optional callable checked between retries;
+                stops immediately if it returns True.
 
         Returns:
             Up to ``n`` real ``MarketTick`` objects, oldest first, and
@@ -186,14 +213,19 @@ class YFinanceProvider:
         recent = self._recent_cache.get(sym)
 
         if not recent:
-            self._fetch_batch([sym])
+            deadline = (
+                time.monotonic() + timeout_seconds
+                if timeout_seconds is not None
+                else None
+            )
+            self._fetch_batch([sym], deadline=deadline, should_stop=should_stop)
             recent = self._recent_cache.get(sym)
 
         if not recent:
             # No history array available (e.g. sparse Tor response) —
             # fall back to the single latest real tick rather than
             # raising or fabricating synthetic prices.
-            return [self.fetch(sym)]
+            return [self.fetch(sym, timeout_seconds=timeout_seconds, should_stop=should_stop)]
 
         return recent[-n:]
 

@@ -140,11 +140,11 @@ while not shutdown:
 
     for symbol in SYMBOLS:
         try:
-            tick = provider.fetch(symbol)
+            tick = provider.fetch(symbol, timeout_seconds=20.0, should_stop=lambda: shutdown)
             price_feed[symbol] = tick.price
 
             # Real 5-tick lookback window (no fabricated/synthetic prices).
-            ticks = provider.fetch_recent(symbol, n=5)
+            ticks = provider.fetch_recent(symbol, n=5, timeout_seconds=20.0, should_stop=lambda: shutdown)
 
             fv = engineer.compute(ticks)
             fv_event = FeatureVectorEvent(

@@ -68,6 +68,32 @@ class TestWarmCacheTimeoutBudget:
         assert elapsed < 1.0
 
 
+class TestFetchTimeoutBudget:
+    def test_fetch_respects_timeout_budget_on_persistent_failure(
+        self, provider: YFinanceProvider
+    ) -> None:
+        with patch.object(
+            provider._yf, "download", side_effect=Exception("429 Too Many Requests")
+        ):
+            start = time.monotonic()
+            with pytest.raises(ValueError, match="No data available"):
+                provider.fetch("AAPL", timeout_seconds=1.0)
+            elapsed = time.monotonic() - start
+        assert elapsed < 2.5
+
+    def test_fetch_recent_respects_timeout_budget_on_persistent_failure(
+        self, provider: YFinanceProvider
+    ) -> None:
+        with patch.object(
+            provider._yf, "download", side_effect=Exception("429 Too Many Requests")
+        ):
+            start = time.monotonic()
+            with pytest.raises(ValueError, match="No data available"):
+                provider.fetch_recent("AAPL", n=5, timeout_seconds=1.0)
+            elapsed = time.monotonic() - start
+        assert elapsed < 2.5
+
+
 class TestShouldAbortHelper:
     def test_should_abort_true_when_deadline_passed(self) -> None:
         past_deadline = time.monotonic() - 1
