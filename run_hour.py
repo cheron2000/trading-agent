@@ -77,7 +77,7 @@ from intelligence.strategies.rule_based import SimpleRuleStrategy
 
 logging.basicConfig(level=logging.WARNING)
 
-SYMBOLS = ["BTC-USD",]
+SYMBOLS = ["AAPL", "MSFT", "GOOGL", "BTC-USD", "ETH-USD", "TSLA"]
 
 # --- EventBus + RateLimiter ---
 _rl = RateLimiter(default_rate=1000.0, default_capacity=2000.0)
