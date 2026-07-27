@@ -353,7 +353,12 @@ class YFinanceProvider:
                         url, timeout=15, headers={"User-Agent": "Mozilla/5.0"}
                     )
                     if resp.status_code == 429:
-                        self._tor.rotate_ip()
+                        if not self._tor.rotate_ip():
+                            _log.warning(
+                                "IP rotation failed for %s — retries will "
+                                "likely hit the same rate limit.",
+                                sym,
+                            )
                         self._interruptible_sleep(10, deadline, should_stop)
                         continue
                     resp.raise_for_status()
@@ -408,7 +413,12 @@ class YFinanceProvider:
                         exc_info=True,
                     )
                     if attempt < self._MAX_RETRIES - 1:
-                        self._tor.rotate_ip()
+                        if not self._tor.rotate_ip():
+                            _log.warning(
+                                "IP rotation failed for %s — retries will "
+                                "likely hit the same rate limit.",
+                                sym,
+                            )
                         self._interruptible_sleep(10, deadline, should_stop)
 
     def _fetch_via_yfinance(
