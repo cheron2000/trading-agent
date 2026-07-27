@@ -2,165 +2,141 @@
 dashboard.web.app
 ====================
 
-create_app() — Flask application factory for the web dashboard.
+Flask application factory for the AI Trading OS web dashboard.
 
-Read-only: exposes one JSON endpoint (state.snapshot()) and one HTML
-page that polls it. Zero write-paths into other layers, matching the
-same rule the terminal LiveView follows.
+Endpoints:
+  GET  /                    → serve the full command dashboard (templates/index.html)
+  GET  /api/snapshot        → JSON snapshot for the full dashboard frontend
+  GET  /api/state           → JSON snapshot (legacy / unit-test compat, same data)
+  GET  /stream              → SSE stream pushing real-time snapshots
+  POST /api/control/tick    → manually trigger a trading cycle
+  POST /api/control/strategy → switch active strategy mode
+  POST /api/control/kill    → emergency kill switch
 
-Run standalone for local testing:
-    python -m dashboard.web.app
-
-In production this is started from run_hour.py in a background
-thread, fed by a DashboardState instance the main loop updates.
+The module-level `dashboard_state` singleton is the primary data source for
+run_hour.py and the control endpoints. The optional `DashboardState` class
+instance path (for isolated unit tests) is also supported via create_app(state).
 
 Python Version: 3.11+
 """
 
 from __future__ import annotations
 
-from flask import Flask, Response, jsonify
+import json
+import os
+from typing import Generator
 
+from flask import Flask, Response, jsonify, request, stream_with_context
+
+from dashboard.web import dashboard_state as _ds
 from dashboard.web.dashboard_state import DashboardState
 
-_INDEX_HTML = """<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>AI Trading OS — Live Dashboard</title>
-<style>
-  :root { color-scheme: dark; }
-  * { box-sizing: border-box; }
-  body {
-    margin: 0; padding: 24px; background: #0b0e14; color: #e6e6e6;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  }
-  h1 { font-size: 1.4rem; margin: 0 0 4px; }
-  .subtitle { color: #8a8f98; font-size: 0.85rem; margin-bottom: 24px; }
-  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin-bottom: 24px; }
-  .card { background: #151922; border: 1px solid #232838; border-radius: 10px; padding: 14px 16px; }
-  .card .label { color: #8a8f98; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.04em; }
-  .card .value { font-size: 1.6rem; font-weight: 600; margin-top: 4px; }
-  .value.pos { color: #4ade80; } .value.neg { color: #f87171; }
-  .panel { background: #151922; border: 1px solid #232838; border-radius: 10px; padding: 16px; margin-bottom: 20px; }
-  .panel h2 { font-size: 0.95rem; margin: 0 0 12px; color: #c7cbd4; }
-  table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
-  th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid #1e2330; }
-  th { color: #8a8f98; font-weight: 500; }
-  .buy { color: #4ade80; } .sell { color: #f87171; } .hold { color: #8a8f98; }
-  .empty { color: #565c6b; font-style: italic; padding: 8px; }
-  .status-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; background: #4ade80; }
-  .status-dot.stale { background: #f87171; }
-</style>
-</head>
-<body>
-  <h1><span class="status-dot" id="statusDot"></span>AI Trading OS — Live Dashboard</h1>
-  <div class="subtitle" id="subtitle">connecting...</div>
 
-  <div class="grid" id="metricsGrid"></div>
-
-  <div class="panel">
-    <h2>Open Positions</h2>
-    <table id="positionsTable"><tbody></tbody></table>
-    <div class="empty" id="positionsEmpty" style="display:none;">No open positions</div>
-  </div>
-
-  <div class="panel">
-    <h2>Latest Decisions</h2>
-    <table id="decisionsTable"><tbody></tbody></table>
-    <div class="empty" id="decisionsEmpty" style="display:none;">No decisions yet</div>
-  </div>
-
-  <div class="panel">
-    <h2>Recent Fills</h2>
-    <table id="fillsTable"><tbody></tbody></table>
-    <div class="empty" id="fillsEmpty" style="display:none;">No fills yet</div>
-  </div>
-
-<script>
-const fmt = (n, d=2) => (n === null || n === undefined) ? "—" : Number(n).toFixed(d);
-const actionClass = a => a === "BUY" ? "buy" : a === "SELL" ? "sell" : "hold";
-
-async function refresh() {
-  let data;
-  try {
-    const resp = await fetch("/api/state");
-    data = await resp.json();
-    document.getElementById("statusDot").classList.remove("stale");
-  } catch (e) {
-    document.getElementById("statusDot").classList.add("stale");
-    document.getElementById("subtitle").textContent = "connection lost — retrying...";
-    return;
-  }
-
-  const m = data.metrics || {};
-  document.getElementById("subtitle").textContent =
-    `cycle ${data.cycle} · last update ${data.last_update ? new Date(data.last_update).toLocaleTimeString() : "—"} · ${data.event_count} events`;
-
-  const equity = m.equity;
-  const equityClass = (equity !== undefined && m.initial_capital !== undefined)
-    ? (equity >= m.initial_capital ? "pos" : "neg") : "";
-
-  document.getElementById("metricsGrid").innerHTML = `
-    <div class="card"><div class="label">Equity</div><div class="value ${equityClass}">$${fmt(equity)}</div></div>
-    <div class="card"><div class="label">Max Drawdown</div><div class="value">${fmt((m.max_drawdown || 0) * 100)}%</div></div>
-    <div class="card"><div class="label">Win Rate</div><div class="value">${fmt((m.win_rate || 0) * 100)}%</div></div>
-    <div class="card"><div class="label">Total P&L</div><div class="value ${(m.total_pnl || 0) >= 0 ? 'pos' : 'neg'}">$${fmt(m.total_pnl)}</div></div>
-    <div class="card"><div class="label">Sharpe Ratio</div><div class="value">${fmt(m.sharpe_ratio)}</div></div>
-    <div class="card"><div class="label">Total Trades</div><div class="value">${m.total_trades ?? "—"}</div></div>
-  `;
-
-  const positions = Object.entries(data.positions || {});
-  document.getElementById("positionsEmpty").style.display = positions.length ? "none" : "block";
-  document.getElementById("positionsTable").querySelector("tbody").innerHTML =
-    (positions.length ? `<tr><th>Symbol</th><th>Qty</th><th>Avg Price</th></tr>` : "") +
-    positions.map(([sym, p]) => `<tr><td>${sym}</td><td>${fmt(p.quantity)}</td><td>$${fmt(p.avg_price)}</td></tr>`).join("");
-
-  const decisions = Object.entries(data.latest_decisions || {});
-  document.getElementById("decisionsEmpty").style.display = decisions.length ? "none" : "block";
-  document.getElementById("decisionsTable").querySelector("tbody").innerHTML =
-    (decisions.length ? `<tr><th>Symbol</th><th>Action</th><th>Confidence</th></tr>` : "") +
-    decisions.map(([sym, d]) => `<tr><td>${sym}</td><td class="${actionClass(d.action)}">${d.action}</td><td>${fmt(d.confidence, 2)}</td></tr>`).join("");
-
-  const fills = data.recent_fills || [];
-  document.getElementById("fillsEmpty").style.display = fills.length ? "none" : "block";
-  document.getElementById("fillsTable").querySelector("tbody").innerHTML =
-    (fills.length ? `<tr><th>Time</th><th>Symbol</th><th>Action</th><th>Qty</th><th>Price</th></tr>` : "") +
-    fills.map(f => `<tr><td>${new Date(f.occurred_at).toLocaleTimeString()}</td><td>${f.symbol}</td><td class="${actionClass(f.action)}">${f.action}</td><td>${fmt(f.quantity)}</td><td>$${fmt(f.fill_price)}</td></tr>`).join("");
-}
-
-refresh();
-setInterval(refresh, 2000);
-</script>
-</body>
-</html>
-"""
-
-
-def create_app(state: DashboardState) -> Flask:
-    """Build the Flask app bound to a given DashboardState.
+def create_app(state: DashboardState | None = None) -> Flask:
+    """Build and return the configured Flask app.
 
     Args:
-        state: The DashboardState instance run_hour.py (or any caller)
-               is feeding via record_event()/update_metrics()/etc.
+        state: Optional DashboardState instance for isolated testing.
+               When None (production), the module-level singleton is used.
 
     Returns:
-        A configured Flask app, ready for app.run() or a WSGI server.
+        A configured Flask app ready for app.run() or a WSGI server.
     """
-    app = Flask(__name__)
+    # Locate templates/ relative to this file so Flask finds index.html
+    template_dir = os.path.join(os.path.dirname(__file__), "templates")
+    app = Flask(__name__, template_folder=template_dir)
+
+    # ------------------------------------------------------------------
+    # HTML
+    # ------------------------------------------------------------------
 
     @app.get("/")
     def index() -> Response:
-        return Response(_INDEX_HTML, mimetype="text/html")
+        # Serve the full-featured command dashboard
+        template_path = os.path.join(template_dir, "index.html")
+        with open(template_path, encoding="utf-8") as f:
+            html = f.read()
+        return Response(html, mimetype="text/html")
+
+    # ------------------------------------------------------------------
+    # JSON snapshot endpoints (dual path: singleton or injected instance)
+    # ------------------------------------------------------------------
+
+    @app.get("/api/snapshot")
+    def api_snapshot():
+        """Full snapshot for the command dashboard frontend."""
+        if state is not None:
+            return jsonify(state.snapshot())
+        return jsonify(_ds.snapshot())
 
     @app.get("/api/state")
     def api_state():
-        return jsonify(state.snapshot())
+        """Legacy alias — same data, keeps old callers working."""
+        if state is not None:
+            return jsonify(state.snapshot())
+        return jsonify(_ds.snapshot())
+
+    # ------------------------------------------------------------------
+    # SSE stream
+    # ------------------------------------------------------------------
+
+    @app.get("/stream")
+    def stream():
+        """Server-Sent Events stream pushing snapshot updates to the browser."""
+
+        def _generate() -> Generator[str, None, None]:
+            q = _ds.subscribe_sse()
+            try:
+                # Send an immediate snapshot so the browser doesn't wait
+                yield f"data: {json.dumps({'type': 'snapshot', 'data': _ds.snapshot()})}\n\n"
+                while True:
+                    try:
+                        msg = q.get(timeout=25)
+                        yield f"data: {msg}\n\n"
+                    except Exception:
+                        # Heartbeat to keep the connection alive
+                        yield "data: {\"type\":\"heartbeat\"}\n\n"
+            finally:
+                _ds.unsubscribe_sse(q)
+
+        return Response(
+            stream_with_context(_generate()),
+            mimetype="text/event-stream",
+            headers={
+                "Cache-Control": "no-cache",
+                "X-Accel-Buffering": "no",
+            },
+        )
+
+    # ------------------------------------------------------------------
+    # Control endpoints
+    # ------------------------------------------------------------------
+
+    @app.post("/api/control/tick")
+    def control_tick():
+        """Request a manual trading cycle on the next loop iteration."""
+        _ds.request_manual_tick()
+        return jsonify({"status": "success", "message": "Manual tick requested"})
+
+    @app.post("/api/control/strategy")
+    def control_strategy():
+        """Switch the active strategy mode."""
+        body = request.get_json(silent=True) or {}
+        mode = body.get("mode", "SIMPLE-RULE")
+        if mode not in ("GROQ-LLM", "SIMPLE-RULE"):
+            return jsonify({"status": "error", "message": f"Unknown mode: {mode}"}), 400
+        _ds.set_strategy_mode(mode)
+        return jsonify({"status": "success", "strategy_mode": mode})
+
+    @app.post("/api/control/kill")
+    def control_kill():
+        """Emergency kill switch — halts the trading loop immediately."""
+        _ds.request_kill()
+        return jsonify({"status": "success", "message": "Kill switch activated"})
 
     return app
 
 
 if __name__ == "__main__":
-    # Standalone smoke-test run with an empty state.
-    create_app(DashboardState()).run(host="127.0.0.1", port=5000, debug=False)
+    # Standalone smoke-test: start with empty singleton state
+    create_app().run(host="127.0.0.1", port=5000, debug=False)

@@ -12,7 +12,8 @@ The system is divided into 7 layers. Each layer communicates **only** through th
 L1  Foundation (Atlas)          — BaseEvent, Logger, Config, Utils
 L2  Communication (Hermes)      — EventBus, Scheduler, HealthMonitor
 L3  Data (Orion)                — MarketDataProvider, FeatureEngineer, DataPipeline
-L4  Intelligence (Athena)       — SimpleRuleStrategy, LLMAgent, DecisionMemory
+L4  Intelligence (Athena)       — SimpleRuleStrategy, LLMAgent,
+         DecisionMemory
 L5  Execution (Apollo-Exec)     — RiskEngine, OrderManager, PortfolioTracker
 L6  Analytics (Apollo-Analytics)— MetricsEngine, TradeJournal, ReportGenerator
 L7  Dashboard (Helios)          — LiveView (terminal shell)
