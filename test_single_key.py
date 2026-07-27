@@ -7,7 +7,7 @@ Tests ONE key against 3 endpoints:
   3. BTC-USD crypto rate   (CURRENCY_EXCHANGE_RATE)
 
 Usage:
-    python test_single_key.py FRYYLDPXPR16ZSI4
+    python test_single_key.py YOUR16CHARAVKEY1
 """
 import sys
 import json
@@ -100,7 +100,7 @@ def test_crypto(key: str, base: str = "BTC") -> tuple[bool, str]:
 def main() -> None:
     if len(sys.argv) < 2:
         print(f"\n{BOLD}Usage:{RESET}  python test_single_key.py YOUR_API_KEY")
-        print(f"Example: python test_single_key.py FRYYLDPXPR16ZSI4\n")
+        print(f"Example: python test_single_key.py YOUR16CHARAVKEY1\n")
         sys.exit(1)
 
     key = sys.argv[1].strip()
