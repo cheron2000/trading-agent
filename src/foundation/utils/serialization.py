@@ -38,7 +38,7 @@ class _FoundationJSONEncoder(json.JSONEncoder):
     def default(self, obj: Any) -> Any:
         """Serialize unsupported Python objects."""
 
-        if is_dataclass(obj):
+        if is_dataclass(obj) and not isinstance(obj, type):
             return asdict(obj)
 
         if isinstance(obj, (datetime, date)):
@@ -85,9 +85,7 @@ def to_json(
             sort_keys=sort_keys,
         )
     except (TypeError, ValueError) as exc:
-        raise SerializationError(
-            "Failed to serialize object to JSON."
-        ) from exc
+        raise SerializationError("Failed to serialize object to JSON.") from exc
 
 
 def from_json(json_string: str) -> dict[str, Any]:
@@ -107,14 +105,10 @@ def from_json(json_string: str) -> dict[str, Any]:
     try:
         data = json.loads(json_string)
     except json.JSONDecodeError as exc:
-        raise DeserializationError(
-            "Invalid JSON."
-        ) from exc
+        raise DeserializationError("Invalid JSON.") from exc
 
     if not isinstance(data, dict):
-        raise DeserializationError(
-            "Top-level JSON object must be a dictionary."
-        )
+        raise DeserializationError("Top-level JSON object must be a dictionary.")
 
     return data
 
@@ -156,9 +150,7 @@ def write_json(
         )
 
     except OSError as exc:
-        raise SerializationError(
-            f"Unable to write JSON file: {file_path}"
-        ) from exc
+        raise SerializationError(f"Unable to write JSON file: {file_path}") from exc
 
 
 def read_json(path: str | Path) -> dict[str, Any]:
@@ -182,9 +174,7 @@ def read_json(path: str | Path) -> dict[str, Any]:
             encoding="utf-8",
         )
     except OSError as exc:
-        raise DeserializationError(
-            f"Unable to read JSON file: {file_path}"
-        ) from exc
+        raise DeserializationError(f"Unable to read JSON file: {file_path}") from exc
 
     return from_json(content)
 

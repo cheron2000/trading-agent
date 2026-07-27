@@ -6,20 +6,19 @@ Covers: Decision, DecisionEvent, IStrategy compliance,
 
 from __future__ import annotations
 
-import json
 from datetime import datetime, timezone
 from unittest.mock import MagicMock
 
 import pytest
 
-from intelligence.models.decision import Decision
+from data.models.feature_vector import FeatureVector
+from intelligence.agent.llm_agent import LLMAgent
+from intelligence.agent.prompt_builder import PromptBuilder
+from intelligence.context.memory import DecisionMemory
 from intelligence.events.decision_event import DecisionEvent
+from intelligence.models.decision import Decision
 from intelligence.strategies.i_strategy import IStrategy
 from intelligence.strategies.rule_based import SimpleRuleStrategy
-from intelligence.agent.prompt_builder import PromptBuilder
-from intelligence.agent.llm_agent import LLMAgent
-from intelligence.context.memory import DecisionMemory
-from data.models.feature_vector import FeatureVector
 
 TS = datetime(2024, 1, 15, 14, 30, 0, tzinfo=timezone.utc)
 
@@ -44,14 +43,18 @@ def make_fv(pct: float, symbol: str = "AAPL", quality: float = 1.0) -> FeatureVe
 
 def make_decision(action: str = "HOLD") -> Decision:
     return Decision(
-        symbol="AAPL", action=action,  # type: ignore[arg-type]
-        confidence=0.5, rationale="test", strategy_id="test-strategy",
+        symbol="AAPL",
+        action=action,  # type: ignore[arg-type]
+        confidence=0.5,
+        rationale="test",
+        strategy_id="test-strategy",
     )
 
 
 # ---------------------------------------------------------------------------
 # Decision model
 # ---------------------------------------------------------------------------
+
 
 class TestDecision:
 
@@ -69,34 +72,67 @@ class TestDecision:
 
     def test_invalid_action_raises(self) -> None:
         with pytest.raises(ValueError, match="action"):
-            Decision(symbol="AAPL", action="LONG", confidence=0.5,  # type: ignore
-                     rationale="x", strategy_id="s")
+            Decision(
+                symbol="AAPL",
+                action="LONG",  # type: ignore[arg-type]
+                confidence=0.5,
+                rationale="x",
+                strategy_id="s",
+            )
 
     def test_confidence_above_1_raises(self) -> None:
         with pytest.raises(ValueError, match="confidence"):
-            Decision(symbol="AAPL", action="BUY", confidence=1.1,
-                     rationale="x", strategy_id="s")
+            Decision(
+                symbol="AAPL",
+                action="BUY",
+                confidence=1.1,
+                rationale="x",
+                strategy_id="s",
+            )
 
     def test_confidence_below_0_raises(self) -> None:
         with pytest.raises(ValueError, match="confidence"):
-            Decision(symbol="AAPL", action="BUY", confidence=-0.1,
-                     rationale="x", strategy_id="s")
+            Decision(
+                symbol="AAPL",
+                action="BUY",
+                confidence=-0.1,
+                rationale="x",
+                strategy_id="s",
+            )
 
     def test_confidence_boundary_values(self) -> None:
-        Decision(symbol="AAPL", action="BUY", confidence=0.0, rationale="x", strategy_id="s")
-        Decision(symbol="AAPL", action="BUY", confidence=1.0, rationale="x", strategy_id="s")
+        Decision(
+            symbol="AAPL", action="BUY", confidence=0.0, rationale="x", strategy_id="s"
+        )
+        Decision(
+            symbol="AAPL", action="BUY", confidence=1.0, rationale="x", strategy_id="s"
+        )
 
     def test_empty_symbol_raises(self) -> None:
         with pytest.raises(ValueError):
-            Decision(symbol="", action="BUY", confidence=0.5, rationale="x", strategy_id="s")
+            Decision(
+                symbol="", action="BUY", confidence=0.5, rationale="x", strategy_id="s"
+            )
 
     def test_empty_rationale_raises(self) -> None:
         with pytest.raises(ValueError):
-            Decision(symbol="AAPL", action="BUY", confidence=0.5, rationale="", strategy_id="s")
+            Decision(
+                symbol="AAPL",
+                action="BUY",
+                confidence=0.5,
+                rationale="",
+                strategy_id="s",
+            )
 
     def test_empty_strategy_id_raises(self) -> None:
         with pytest.raises(ValueError):
-            Decision(symbol="AAPL", action="BUY", confidence=0.5, rationale="x", strategy_id="")
+            Decision(
+                symbol="AAPL",
+                action="BUY",
+                confidence=0.5,
+                rationale="x",
+                strategy_id="",
+            )
 
     def test_immutability(self) -> None:
         d = make_decision()
@@ -115,13 +151,17 @@ class TestDecision:
 # DecisionEvent
 # ---------------------------------------------------------------------------
 
+
 class TestDecisionEvent:
 
     def test_valid_creation(self) -> None:
         e = DecisionEvent(
             event_type="intelligence.decision",
-            symbol="AAPL", action="BUY",
-            confidence=0.8, rationale="bullish", strategy_id="rule-1",
+            symbol="AAPL",
+            action="BUY",
+            confidence=0.8,
+            rationale="bullish",
+            strategy_id="rule-1",
         )
         assert e.event_type == "intelligence.decision"
         assert e.action == "BUY"
@@ -129,8 +169,11 @@ class TestDecisionEvent:
     def test_inherits_base_event_fields(self) -> None:
         e = DecisionEvent(
             event_type="intelligence.decision",
-            symbol="AAPL", action="HOLD",
-            confidence=0.5, rationale="neutral", strategy_id="rule-1",
+            symbol="AAPL",
+            action="HOLD",
+            confidence=0.5,
+            rationale="neutral",
+            strategy_id="rule-1",
         )
         assert hasattr(e, "event_id")
         assert hasattr(e, "occurred_at")
@@ -138,22 +181,46 @@ class TestDecisionEvent:
 
     def test_invalid_action_raises(self) -> None:
         with pytest.raises(ValueError):
-            DecisionEvent(event_type="intelligence.decision", symbol="AAPL",
-                          action="LONG", confidence=0.5, rationale="x", strategy_id="s")  # type: ignore
+            DecisionEvent(
+                event_type="intelligence.decision",
+                symbol="AAPL",
+                action="LONG",  # type: ignore[arg-type]
+                confidence=0.5,
+                rationale="x",
+                strategy_id="s",
+            )  # type: ignore
 
     def test_confidence_out_of_range_raises(self) -> None:
         with pytest.raises(ValueError):
-            DecisionEvent(event_type="intelligence.decision", symbol="AAPL",
-                          action="BUY", confidence=2.0, rationale="x", strategy_id="s")
+            DecisionEvent(
+                event_type="intelligence.decision",
+                symbol="AAPL",
+                action="BUY",
+                confidence=2.0,
+                rationale="x",
+                strategy_id="s",
+            )
 
     def test_empty_symbol_raises(self) -> None:
         with pytest.raises(ValueError):
-            DecisionEvent(event_type="intelligence.decision", symbol="",
-                          action="BUY", confidence=0.5, rationale="x", strategy_id="s")
+            DecisionEvent(
+                event_type="intelligence.decision",
+                symbol="",
+                action="BUY",
+                confidence=0.5,
+                rationale="x",
+                strategy_id="s",
+            )
 
     def test_to_dict_extends_base(self) -> None:
-        e = DecisionEvent(event_type="intelligence.decision", symbol="AAPL",
-                          action="SELL", confidence=0.7, rationale="bearish", strategy_id="s")
+        e = DecisionEvent(
+            event_type="intelligence.decision",
+            symbol="AAPL",
+            action="SELL",
+            confidence=0.7,
+            rationale="bearish",
+            strategy_id="s",
+        )
         d = e.to_dict()
         assert "event_id" in d
         assert d["action"] == "SELL"
@@ -163,6 +230,7 @@ class TestDecisionEvent:
 # ---------------------------------------------------------------------------
 # IStrategy Protocol compliance
 # ---------------------------------------------------------------------------
+
 
 class TestIStrategyCompliance:
 
@@ -176,6 +244,7 @@ class TestIStrategyCompliance:
 # ---------------------------------------------------------------------------
 # SimpleRuleStrategy
 # ---------------------------------------------------------------------------
+
 
 class TestSimpleRuleStrategy:
 
@@ -236,7 +305,9 @@ class TestSimpleRuleStrategy:
 
     def test_missing_price_change_pct_raises(self) -> None:
         s = SimpleRuleStrategy()
-        fv = FeatureVector(symbol="AAPL", timestamp=TS, features={"high": 100.0}, source_quality=1.0)
+        fv = FeatureVector(
+            symbol="AAPL", timestamp=TS, features={"high": 100.0}, source_quality=1.0
+        )
         with pytest.raises(ValueError, match="price_change_pct"):
             s.evaluate(fv)
 
@@ -253,6 +324,7 @@ class TestSimpleRuleStrategy:
 # ---------------------------------------------------------------------------
 # PromptBuilder
 # ---------------------------------------------------------------------------
+
 
 class TestPromptBuilder:
 
@@ -287,27 +359,36 @@ class TestPromptBuilder:
 # LLMAgent
 # ---------------------------------------------------------------------------
 
+
 class TestLLMAgent:
 
     def _make_agent(self, response: str) -> LLMAgent:
         client = MagicMock()
         client.complete.return_value = response
-        return LLMAgent(llm_client=client, prompt_builder=PromptBuilder(), strategy_id="llm-test")
+        return LLMAgent(
+            llm_client=client, prompt_builder=PromptBuilder(), strategy_id="llm-test"
+        )
 
     def test_valid_buy_response(self) -> None:
-        agent = self._make_agent('{"action": "BUY", "confidence": 0.85, "rationale": "strong uptrend"}')
+        agent = self._make_agent(
+            '{"action": "BUY", "confidence": 0.85, "rationale": "strong uptrend"}'
+        )
         d = agent.evaluate(make_fv(pct=2.0))
         assert d.action == "BUY"
         assert d.confidence == pytest.approx(0.85)
         assert d.symbol == "AAPL"
 
     def test_valid_sell_response(self) -> None:
-        agent = self._make_agent('{"action": "SELL", "confidence": 0.7, "rationale": "bearish"}')
+        agent = self._make_agent(
+            '{"action": "SELL", "confidence": 0.7, "rationale": "bearish"}'
+        )
         d = agent.evaluate(make_fv(pct=-2.0))
         assert d.action == "SELL"
 
     def test_valid_hold_response(self) -> None:
-        agent = self._make_agent('{"action": "HOLD", "confidence": 0.5, "rationale": "neutral"}')
+        agent = self._make_agent(
+            '{"action": "HOLD", "confidence": 0.5, "rationale": "neutral"}'
+        )
         d = agent.evaluate(make_fv(pct=0.0))
         assert d.action == "HOLD"
 
@@ -317,12 +398,16 @@ class TestLLMAgent:
             agent.evaluate(make_fv(pct=1.0))
 
     def test_invalid_action_raises(self) -> None:
-        agent = self._make_agent('{"action": "LONG", "confidence": 0.5, "rationale": "x"}')
+        agent = self._make_agent(
+            '{"action": "LONG", "confidence": 0.5, "rationale": "x"}'
+        )
         with pytest.raises(ValueError, match="action"):
             agent.evaluate(make_fv(pct=1.0))
 
     def test_confidence_above_1_raises(self) -> None:
-        agent = self._make_agent('{"action": "BUY", "confidence": 1.5, "rationale": "x"}')
+        agent = self._make_agent(
+            '{"action": "BUY", "confidence": 1.5, "rationale": "x"}'
+        )
         with pytest.raises(ValueError, match="confidence"):
             agent.evaluate(make_fv(pct=1.0))
 
@@ -332,30 +417,38 @@ class TestLLMAgent:
             agent.evaluate(make_fv(pct=1.0))
 
     def test_empty_rationale_raises(self) -> None:
-        agent = self._make_agent('{"action": "BUY", "confidence": 0.8, "rationale": ""}')
+        agent = self._make_agent(
+            '{"action": "BUY", "confidence": 0.8, "rationale": ""}'
+        )
         with pytest.raises(ValueError, match="rationale"):
             agent.evaluate(make_fv(pct=1.0))
 
     def test_json_array_raises(self) -> None:
         agent = self._make_agent('[{"action": "BUY"}]')
-        with pytest.raises(ValueError):
+        with pytest.raises(TypeError):
             agent.evaluate(make_fv(pct=1.0))
 
     def test_none_feature_vector_raises(self) -> None:
-        agent = self._make_agent('{"action": "BUY", "confidence": 0.8, "rationale": "x"}')
+        agent = self._make_agent(
+            '{"action": "BUY", "confidence": 0.8, "rationale": "x"}'
+        )
         with pytest.raises(ValueError):
             agent.evaluate(None)  # type: ignore
 
     def test_empty_strategy_id_raises(self) -> None:
         with pytest.raises(ValueError):
-            LLMAgent(llm_client=MagicMock(), prompt_builder=PromptBuilder(), strategy_id="")
+            LLMAgent(
+                llm_client=MagicMock(), prompt_builder=PromptBuilder(), strategy_id=""
+            )
 
     def test_strategy_id_property(self) -> None:
         agent = self._make_agent("{}")
         assert agent.strategy_id == "llm-test"
 
     def test_decision_strategy_id_matches_agent(self) -> None:
-        agent = self._make_agent('{"action": "HOLD", "confidence": 0.5, "rationale": "neutral"}')
+        agent = self._make_agent(
+            '{"action": "HOLD", "confidence": 0.5, "rationale": "neutral"}'
+        )
         d = agent.evaluate(make_fv(pct=0.0))
         assert d.strategy_id == "llm-test"
 
@@ -363,6 +456,7 @@ class TestLLMAgent:
 # ---------------------------------------------------------------------------
 # DecisionMemory
 # ---------------------------------------------------------------------------
+
 
 class TestDecisionMemory:
 

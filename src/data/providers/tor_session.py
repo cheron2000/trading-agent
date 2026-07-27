@@ -77,15 +77,14 @@ class TorProxySession:
         try:
             from stem import Signal
             from stem.control import Controller
+
             with Controller.from_port(port=TOR_CONTROL_PORT) as ctrl:
                 ctrl.authenticate(password=self._password)
                 ctrl.signal(Signal.NEWNYM)
             _log.info("Tor circuit rotated — new exit IP requested.")
         except ImportError:
-            _log.warning(
-                "stem is required for IP rotation: pip install stem"
-            )
-        except Exception:
+            _log.warning("stem is required for IP rotation: pip install stem")
+        except Exception:  # noqa: BLE001 -- stem errors vary; logged
             _log.warning(
                 "Failed to rotate Tor circuit — is Tor running on port %d?",
                 TOR_CONTROL_PORT,
@@ -101,7 +100,7 @@ class TorProxySession:
         try:
             resp = self._session.get("https://api.ipify.org", timeout=10)
             return resp.text.strip()
-        except Exception:
+        except Exception:  # noqa: BLE001 -- external call; logged
             _log.warning("Could not fetch current IP via Tor.", exc_info=True)
             return None
 

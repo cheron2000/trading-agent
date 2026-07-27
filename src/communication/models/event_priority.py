@@ -89,7 +89,7 @@ class EventPriority(IntEnum):
         )
 
     @classmethod
-    def default(cls) -> "EventPriority":
+    def default(cls) -> EventPriority:
         """Return the default event priority.
 
         Returns:
@@ -98,7 +98,7 @@ class EventPriority(IntEnum):
         return cls.NORMAL
 
     @classmethod
-    def from_value(cls, value: int) -> "EventPriority":
+    def from_value(cls, value: int) -> EventPriority:
         """Create an EventPriority from its numeric value.
 
         Args:
@@ -115,9 +115,7 @@ class EventPriority(IntEnum):
         try:
             return cls(value)
         except ValueError as exc:
-            raise ValueError(
-                f"Unsupported event priority: {value}"
-            ) from exc
+            raise ValueError(f"Unsupported event priority: {value}") from exc
 
     def __str__(self) -> str:
         """Return the canonical lowercase name.

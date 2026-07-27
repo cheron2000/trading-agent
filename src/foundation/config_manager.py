@@ -21,7 +21,7 @@ from collections.abc import Mapping
 from pathlib import Path
 from threading import Lock
 from types import MappingProxyType
-from typing import Any
+from typing import Any, Self, cast
 
 import yaml
 
@@ -35,16 +35,17 @@ class ConfigManager:
     """Singleton configuration manager."""
 
     _instance: ConfigManager | None = None
+    _initialized: bool = False
     _lock = Lock()
 
-    def __new__(cls) -> ConfigManager:
+    def __new__(cls) -> Self:
         """Create the singleton instance."""
         if cls._instance is None:
             with cls._lock:
                 if cls._instance is None:
                     cls._instance = super().__new__(cls)
                     cls._instance._initialized = False
-        return cls._instance
+        return cast(Self, cls._instance)
 
     def __init__(self) -> None:
         """Initialize the configuration manager."""
@@ -70,9 +71,7 @@ class ConfigManager:
         try:
             config_path = Path(path).resolve()
         except (TypeError, ValueError) as exc:
-            raise ConfigurationError(
-                f"Invalid configuration path: {path}"
-            ) from exc
+            raise ConfigurationError(f"Invalid configuration path: {path}") from exc
 
         if not config_path.exists():
             raise ConfigurationError(
@@ -87,14 +86,10 @@ class ConfigManager:
                 data = yaml.safe_load(file) or {}
 
         except yaml.YAMLError as exc:
-            raise ConfigurationError(
-                "Invalid YAML configuration."
-            ) from exc
+            raise ConfigurationError("Invalid YAML configuration.") from exc
 
         if not isinstance(data, dict):
-            raise ConfigurationError(
-                "Root configuration must be a mapping."
-            )
+            raise ConfigurationError("Root configuration must be a mapping.")
 
         self._config = MappingProxyType(data)
 
@@ -126,10 +121,7 @@ class ConfigManager:
         current: Any = self._config
 
         for part in key.split("."):
-            if (
-                isinstance(current, Mapping)
-                and part in current
-            ):
+            if isinstance(current, Mapping) and part in current:
                 current = current[part]
             else:
                 return default
@@ -154,9 +146,7 @@ class ConfigManager:
         value = self.get(key)
 
         if value is None:
-            raise MissingConfigurationError(
-                f"Missing required configuration: {key}"
-            )
+            raise MissingConfigurationError(f"Missing required configuration: {key}")
 
         return value
 

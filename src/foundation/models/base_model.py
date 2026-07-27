@@ -32,9 +32,7 @@ class BaseModel:
     """
 
     id: str = field(default_factory=lambda: str(uuid4()))
-    created_at: datetime = field(
-        default_factory=lambda: datetime.now(UTC)
-    )
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
     def to_dict(self) -> dict[str, Any]:
         """Convert the model into a dictionary.
@@ -55,7 +53,7 @@ class BaseModel:
         return self.to_dict()
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "BaseModel":
+    def from_dict(cls, data: dict[str, Any]) -> BaseModel:
         """Create an instance from a dictionary.
 
         Args:
@@ -68,18 +66,13 @@ class BaseModel:
         payload = dict(data)
 
         if "created_at" in payload:
-            payload["created_at"] = datetime.fromisoformat(
-                payload["created_at"]
-            )
+            payload["created_at"] = datetime.fromisoformat(payload["created_at"])
 
         return cls(**payload)
 
     def __str__(self) -> str:
         """Return a human-readable representation."""
-        return (
-            f"{self.__class__.__name__}"
-            f"(id='{self.id}')"
-        )
+        return f"{self.__class__.__name__}" f"(id='{self.id}')"
 
     def __repr__(self) -> str:
         """Return a developer-friendly representation."""

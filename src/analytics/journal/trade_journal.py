@@ -16,7 +16,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import ClassVar
@@ -116,11 +116,7 @@ class TradeJournal:
             raise ValueError("decision must not be None.")
 
         sequence = len(self._entries) + 1
-        prev_hash = (
-            self._entries[-1].entry_hash
-            if self._entries
-            else self.GENESIS_HASH
-        )
+        prev_hash = self._entries[-1].entry_hash if self._entries else self.GENESIS_HASH
         now = datetime.now(timezone.utc)
 
         entry_hash = self._compute_hash(
@@ -181,7 +177,7 @@ class TradeJournal:
         return len(self._entries)
 
     @classmethod
-    def load_from_file(cls, path: str | Path) -> "TradeJournal":
+    def load_from_file(cls, path: str | Path) -> TradeJournal:
         """Reconstruct a TradeJournal by replaying a persisted JSONL file.
 
         Lets a resumed session extend the same durable hash chain
@@ -257,6 +253,9 @@ class TradeJournal:
         disk before ``record()`` returns, so a crash immediately after
         a fill still leaves an audit trail instead of losing it.
         """
+        assert (
+            self._persist_path is not None
+        ), "_append_to_disk requires persist_path to be set"
         line = json.dumps(entry.to_dict(), sort_keys=True)
         with open(self._persist_path, "a", encoding="utf-8") as fh:
             fh.write(line + "\n")

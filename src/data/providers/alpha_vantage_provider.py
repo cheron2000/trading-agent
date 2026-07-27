@@ -41,13 +41,12 @@ from __future__ import annotations
 
 import json
 import logging
-import math
 import time
 from datetime import datetime, timezone
 from typing import ClassVar
-from urllib.request import urlopen
-from urllib.error import URLError, HTTPError
+from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
+from urllib.request import urlopen
 
 from data.models.market_tick import MarketTick
 from data.providers.i_data_provider import IDataProvider
@@ -167,7 +166,9 @@ class AlphaVantageProvider:
         if cached is not None:
             price, volume, ts, fetched_at = cached
             if time.monotonic() - fetched_at < self._ttl:
-                _log.debug("Cache hit for %s (%.1fs old).", sym, time.monotonic() - fetched_at)
+                _log.debug(
+                    "Cache hit for %s (%.1fs old).", sym, time.monotonic() - fetched_at
+                )
                 return MarketTick(
                     symbol=sym,
                     price=price,
@@ -212,14 +213,22 @@ class AlphaVantageProvider:
         for i, sym in enumerate(syms):
             # Sleep BEFORE each request (except the first) to stay within 5 req/min
             if i > 0:
-                _log.debug("Rate limit sleep %.1fs before fetching %s", self._rate_limit_sleep, sym)
+                _log.debug(
+                    "Rate limit sleep %.1fs before fetching %s",
+                    self._rate_limit_sleep,
+                    sym,
+                )
                 time.sleep(self._rate_limit_sleep)
             try:
                 self._fetch_symbol(sym)
-                _log.info("  [%d/%d] %s — cached @ $%.4f.",
-                          i + 1, len(syms), sym,
-                          self._cache[sym][0] if sym in self._cache else 0)
-            except Exception as exc:
+                _log.info(
+                    "  [%d/%d] %s — cached @ $%.4f.",
+                    i + 1,
+                    len(syms),
+                    sym,
+                    self._cache[sym][0] if sym in self._cache else 0,
+                )
+            except Exception as exc:  # noqa: BLE001 -- 3rd-party errors vary; logged
                 _log.warning("  [%d/%d] %s — failed: %s", i + 1, len(syms), sym, exc)
 
     # ------------------------------------------------------------------
@@ -310,17 +319,22 @@ class AlphaVantageProvider:
 
                 self._consume_request()
                 self._cache[symbol] = (price, volume, ts, time.monotonic())
-                _log.debug("Fetched %s → $%.4f (key %d, req %d/%d)",
-                           symbol, price,
-                           self._key_index + 1,
-                           self._key_request_count,
-                           self._requests_per_key)
+                _log.debug(
+                    "Fetched %s → $%.4f (key %d, req %d/%d)",
+                    symbol,
+                    price,
+                    self._key_index + 1,
+                    self._key_request_count,
+                    self._requests_per_key,
+                )
                 return
 
             except _RateLimitError:
                 _log.warning(
                     "Rate limit hit on key %d — rotating key (attempt %d/%d).",
-                    self._key_index + 1, attempt + 1, self._MAX_RETRIES,
+                    self._key_index + 1,
+                    attempt + 1,
+                    self._MAX_RETRIES,
                 )
                 if not self._rotate_key():
                     raise RuntimeError(
@@ -329,9 +343,7 @@ class AlphaVantageProvider:
                 time.sleep(1.0)  # brief pause before retrying with new key
 
             except _KeyInvalidError:
-                _log.warning(
-                    "Invalid API key at index %d — rotating.", self._key_index
-                )
+                _log.warning("Invalid API key at index %d — rotating.", self._key_index)
                 if not self._rotate_key():
                     raise RuntimeError(
                         f"All API keys invalid or exhausted for '{symbol}'."
@@ -339,10 +351,13 @@ class AlphaVantageProvider:
 
             except Exception as exc:
                 if attempt < self._MAX_RETRIES - 1:
-                    wait = 2.0 ** attempt
+                    wait = 2.0**attempt
                     _log.warning(
                         "Fetch attempt %d failed for '%s': %s. Retrying in %.0fs.",
-                        attempt + 1, symbol, exc, wait,
+                        attempt + 1,
+                        symbol,
+                        exc,
+                        wait,
                     )
                     time.sleep(wait)
                 else:
@@ -350,9 +365,7 @@ class AlphaVantageProvider:
                         f"Failed to fetch '{symbol}' after {self._MAX_RETRIES} attempts: {exc}"
                     ) from exc
 
-    def _fetch_equity(
-        self, symbol: str, api_key: str
-    ) -> tuple[float, float, datetime]:
+    def _fetch_equity(self, symbol: str, api_key: str) -> tuple[float, float, datetime]:
         """Fetch equity quote via GLOBAL_QUOTE endpoint."""
         params = {
             "function": "GLOBAL_QUOTE",
@@ -383,9 +396,7 @@ class AlphaVantageProvider:
 
         return price, volume, ts
 
-    def _fetch_crypto(
-        self, symbol: str, api_key: str
-    ) -> tuple[float, float, datetime]:
+    def _fetch_crypto(self, symbol: str, api_key: str) -> tuple[float, float, datetime]:
         """Fetch crypto quote via CURRENCY_EXCHANGE_RATE endpoint.
 
         Strips '-USD' suffix automatically (e.g. 'BTC-USD' → 'BTC').
@@ -439,7 +450,7 @@ class AlphaVantageProvider:
 
         url = f"{_BASE_URL}?{urlencode(params)}"
         try:
-            with urlopen(url, timeout=15) as resp:  # noqa: S310
+            with urlopen(url, timeout=15) as resp:
                 raw = resp.read().decode("utf-8")
                 self._last_request_at = time.monotonic()
                 return json.loads(raw)
@@ -496,7 +507,7 @@ class AlphaVantageProvider:
     def _parse_date(date_str: str) -> datetime:
         """Parse 'YYYY-MM-DD' into UTC-aware datetime."""
         try:
-            dt = datetime.strptime(date_str.strip(), "%Y-%m-%d")
+            dt = datetime.strptime(date_str.strip(), "%Y-%m-%d")  # noqa: DTZ007
             return dt.replace(tzinfo=timezone.utc)
         except (ValueError, AttributeError):
             return datetime.now(timezone.utc)
@@ -505,8 +516,8 @@ class AlphaVantageProvider:
     def _parse_datetime(dt_str: str) -> datetime:
         """Parse Alpha Vantage datetime string into UTC-aware datetime."""
         try:
-            # Format: "2024-01-15 14:30:00"
-            dt = datetime.strptime(dt_str.strip()[:19], "%Y-%m-%d %H:%M:%S")
+            fmt = "%Y-%m-%d %H:%M:%S"
+            dt = datetime.strptime(dt_str.strip()[:19], fmt)  # noqa: DTZ007
             return dt.replace(tzinfo=timezone.utc)
         except (ValueError, AttributeError):
             return datetime.now(timezone.utc)
@@ -515,6 +526,7 @@ class AlphaVantageProvider:
 # ------------------------------------------------------------------
 # Internal sentinel exceptions (not part of public API)
 # ------------------------------------------------------------------
+
 
 class _RateLimitError(Exception):
     """Raised when Alpha Vantage signals a rate limit (Note / 429)."""
@@ -525,6 +537,6 @@ class _KeyInvalidError(Exception):
 
 
 # Runtime protocol check
-assert isinstance(AlphaVantageProvider.__new__(AlphaVantageProvider), IDataProvider), (
-    "AlphaVantageProvider does not satisfy the IDataProvider Protocol."
-)
+assert isinstance(
+    AlphaVantageProvider.__new__(AlphaVantageProvider), IDataProvider
+), "AlphaVantageProvider does not satisfy the IDataProvider Protocol."

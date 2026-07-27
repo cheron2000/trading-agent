@@ -15,6 +15,7 @@ from dataclasses import dataclass
 from datetime import datetime
 
 from foundation.base_event import BaseEvent
+
 from .event_metadata import EventMetadata
 from .event_priority import EventPriority
 
@@ -48,9 +49,7 @@ class EventEnvelope:
             raise ValueError("metadata must not be None.")
 
         if not isinstance(self.priority, EventPriority):
-            raise TypeError(
-                "priority must be an EventPriority."
-            )
+            raise TypeError("priority must be an EventPriority.")
 
     # ------------------------------------------------------------------
     # Convenience properties
@@ -101,7 +100,7 @@ class EventEnvelope:
             "metadata": self.metadata.to_dict(),
             "priority": self.priority.value,
         }
-    
+
     # ------------------------------------------------------------------
     # Convenience helpers
     # ------------------------------------------------------------------

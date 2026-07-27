@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from foundation.base_event import BaseEvent
 from execution.models.order import Order
+from foundation.base_event import BaseEvent
 
 
 @dataclass(frozen=True, slots=True)

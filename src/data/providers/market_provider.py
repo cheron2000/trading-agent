@@ -22,7 +22,9 @@ from data.models.market_tick import MarketTick
 from data.providers.i_data_provider import IDataProvider
 
 # Default fixture: src/data/providers/ → parents[0]=providers, [1]=data, [2]=src, [3]=project root
-_DEFAULT_FIXTURE = Path(__file__).parents[3] / "data_store" / "fixtures" / "market_ticks.json"
+_DEFAULT_FIXTURE = (
+    Path(__file__).parents[3] / "data_store" / "fixtures" / "market_ticks.json"
+)
 
 
 class MarketDataProvider:
@@ -106,9 +108,7 @@ class MarketDataProvider:
         """Load and parse the JSON fixture file."""
         safe_path = Path(self._fixture_path).resolve()
         if not safe_path.exists():
-            raise FileNotFoundError(
-                f"Fixture file not found: {safe_path}"
-            )
+            raise FileNotFoundError(f"Fixture file not found: {safe_path}")
 
         with safe_path.open("r", encoding="utf-8") as fh:
             raw: list[dict] = json.load(fh)
@@ -140,7 +140,7 @@ class MarketDataProvider:
             if isinstance(ts_raw, str):
                 ts = datetime.fromisoformat(ts_raw)
             else:
-                raise ValueError("timestamp must be an ISO-8601 string.")
+                raise TypeError("timestamp must be an ISO-8601 string.")
 
             if ts.tzinfo is None:
                 ts = ts.replace(tzinfo=timezone.utc)
@@ -157,6 +157,6 @@ class MarketDataProvider:
 
 
 # Runtime protocol check
-assert isinstance(MarketDataProvider.__new__(MarketDataProvider), IDataProvider), (
-    "MarketDataProvider does not satisfy the IDataProvider Protocol."
-)
+assert isinstance(
+    MarketDataProvider.__new__(MarketDataProvider), IDataProvider
+), "MarketDataProvider does not satisfy the IDataProvider Protocol."

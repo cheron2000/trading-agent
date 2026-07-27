@@ -137,4 +137,3 @@ class TestEventPriority:
         assert EventPriority.NORMAL in EventPriority
         assert EventPriority.LOW in EventPriority
         assert EventPriority.BACKGROUND in EventPriority
-        

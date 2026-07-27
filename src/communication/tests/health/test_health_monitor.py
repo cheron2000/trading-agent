@@ -4,23 +4,22 @@ Unit tests for communication.health.health_monitor.HealthMonitor.
 
 from __future__ import annotations
 
-import time
-from datetime import datetime, timezone, timedelta
-from typing import Callable
+from datetime import datetime, timedelta, timezone
+from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
 
-from foundation.base_event import BaseEvent
 from communication.health import HealthMonitor
 from communication.interfaces import IHealthMonitor
-from communication.models.heartbeat import Heartbeat
 from communication.models.health_state import HealthState
-
+from communication.models.heartbeat import Heartbeat
+from foundation.base_event import BaseEvent
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def make_heartbeat(
     component: str = "orion",
@@ -29,12 +28,12 @@ def make_heartbeat(
     version: str = "1.0.0",
     last_seen: datetime | None = None,
 ) -> Heartbeat:
-    kwargs = dict(
-        component_name=component,
-        health_state=state,
-        uptime_seconds=uptime,
-        version=version,
-    )
+    kwargs: dict[str, Any] = {
+        "component_name": component,
+        "health_state": state,
+        "uptime_seconds": uptime,
+        "version": version,
+    }
     if last_seen is not None:
         kwargs["last_seen"] = last_seen
     return Heartbeat(**kwargs)
@@ -43,6 +42,7 @@ def make_heartbeat(
 # ---------------------------------------------------------------------------
 # Protocol compliance
 # ---------------------------------------------------------------------------
+
 
 class TestHealthMonitorProtocolCompliance:
 
@@ -53,6 +53,7 @@ class TestHealthMonitorProtocolCompliance:
 # ---------------------------------------------------------------------------
 # Constructor
 # ---------------------------------------------------------------------------
+
 
 class TestHealthMonitorInit:
 
@@ -76,6 +77,7 @@ class TestHealthMonitorInit:
 # ---------------------------------------------------------------------------
 # register()
 # ---------------------------------------------------------------------------
+
 
 class TestHealthMonitorRegister:
 
@@ -111,6 +113,7 @@ class TestHealthMonitorRegister:
 # record_heartbeat()
 # ---------------------------------------------------------------------------
 
+
 class TestHealthMonitorRecordHeartbeat:
 
     def test_record_heartbeat_stores_latest(self) -> None:
@@ -135,7 +138,7 @@ class TestHealthMonitorRecordHeartbeat:
         hb2 = make_heartbeat("orion", uptime=20)
         m.record_heartbeat(hb1)
         m.record_heartbeat(hb2)
-        assert m.get_heartbeat("orion").uptime_seconds == 20
+        assert m.get_heartbeat("orion").uptime_seconds == 20  # type: ignore[union-attr]
 
     def test_record_heartbeat_publishes_event_on_bus(self) -> None:
         bus = MagicMock()
@@ -153,6 +156,7 @@ class TestHealthMonitorRecordHeartbeat:
 # ---------------------------------------------------------------------------
 # is_alive()
 # ---------------------------------------------------------------------------
+
 
 class TestHealthMonitorIsAlive:
 
@@ -188,13 +192,17 @@ class TestHealthMonitorIsAlive:
     def test_not_alive_expired_heartbeat(self) -> None:
         m = HealthMonitor(liveness_window_seconds=1)
         old_ts = datetime.now(timezone.utc) - timedelta(seconds=60)
-        m.record_heartbeat(make_heartbeat("orion", state=HealthState.RUNNING, last_seen=old_ts))
+        m.record_heartbeat(
+            make_heartbeat("orion", state=HealthState.RUNNING, last_seen=old_ts)
+        )
         assert m.is_alive("orion") is False
 
     def test_alive_within_liveness_window(self) -> None:
         m = HealthMonitor(liveness_window_seconds=30)
         recent_ts = datetime.now(timezone.utc) - timedelta(seconds=5)
-        m.record_heartbeat(make_heartbeat("orion", state=HealthState.RUNNING, last_seen=recent_ts))
+        m.record_heartbeat(
+            make_heartbeat("orion", state=HealthState.RUNNING, last_seen=recent_ts)
+        )
         assert m.is_alive("orion") is True
 
     def test_not_alive_starting_state(self) -> None:

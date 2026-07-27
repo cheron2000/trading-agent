@@ -67,11 +67,10 @@ class YFinanceProvider:
         """
         try:
             import yfinance as yf
+
             self._yf = yf
         except ImportError as exc:
-            raise ImportError(
-                "yfinance is required: pip install yfinance"
-            ) from exc
+            raise ImportError("yfinance is required: pip install yfinance") from exc
 
         self._symbols = [s.upper() for s in (symbols or [])]
         self._ttl = ttl_seconds
@@ -89,6 +88,7 @@ class YFinanceProvider:
             import os
 
             from data.providers.tor_session import TorProxySession
+
             self._tor = TorProxySession(control_password=tor_control_password)
             # Set env-level proxy so yfinance's internal requests picks it up
             os.environ["HTTP_PROXY"] = "socks5h://127.0.0.1:9150"
@@ -150,17 +150,13 @@ class YFinanceProvider:
 
         # Cache miss or stale — fetch fresh data with backoff
         deadline = (
-            time.monotonic() + timeout_seconds
-            if timeout_seconds is not None
-            else None
+            time.monotonic() + timeout_seconds if timeout_seconds is not None else None
         )
         self._fetch_batch([sym], deadline=deadline, should_stop=should_stop)
 
         entry = self._cache.get(sym)
         if entry is None:
-            raise ValueError(
-                f"No data available for symbol '{sym}'."
-            )
+            raise ValueError(f"No data available for symbol '{sym}'.")
 
         price, volume, ts, _ = entry
         return MarketTick(
@@ -225,7 +221,11 @@ class YFinanceProvider:
             # No history array available (e.g. sparse Tor response) —
             # fall back to the single latest real tick rather than
             # raising or fabricating synthetic prices.
-            return [self.fetch(sym, timeout_seconds=timeout_seconds, should_stop=should_stop)]
+            return [
+                self.fetch(
+                    sym, timeout_seconds=timeout_seconds, should_stop=should_stop
+                )
+            ]
 
         return recent[-n:]
 
@@ -259,9 +259,7 @@ class YFinanceProvider:
         if not syms:
             return
         deadline = (
-            time.monotonic() + timeout_seconds
-            if timeout_seconds is not None
-            else None
+            time.monotonic() + timeout_seconds if timeout_seconds is not None else None
         )
         self._fetch_batch(syms, deadline=deadline, should_stop=should_stop)
 
@@ -291,7 +289,9 @@ class YFinanceProvider:
         if self._tor is not None:
             self._fetch_via_tor(symbols, deadline=deadline, should_stop=should_stop)
         else:
-            self._fetch_via_yfinance(symbols, deadline=deadline, should_stop=should_stop)
+            self._fetch_via_yfinance(
+                symbols, deadline=deadline, should_stop=should_stop
+            )
 
     @staticmethod
     def _should_abort(
@@ -329,6 +329,7 @@ class YFinanceProvider:
         should_stop: Callable[[], bool] | None = None,
     ) -> None:
         """Fetch prices via Yahoo Finance JSON API through Tor session."""
+        assert self._tor is not None, "_fetch_via_tor requires an active Tor session"
         now_epoch = time.monotonic()
         now_dt = datetime.now(timezone.utc)
         session = self._tor.session
@@ -336,7 +337,8 @@ class YFinanceProvider:
             if self._should_abort(deadline, should_stop):
                 _log.warning(
                     "warm_cache: time budget/stop signal hit before symbol %s — "
-                    "skipping remaining symbols.", sym,
+                    "skipping remaining symbols.",
+                    sym,
                 )
                 return
             for attempt in range(self._MAX_RETRIES):
@@ -347,9 +349,9 @@ class YFinanceProvider:
                         f"https://query1.finance.yahoo.com/v8/finance/chart/{sym}"
                         f"?interval=1m&range=1d"
                     )
-                    resp = session.get(url, timeout=15, headers={
-                        "User-Agent": "Mozilla/5.0"
-                    })
+                    resp = session.get(
+                        url, timeout=15, headers={"User-Agent": "Mozilla/5.0"}
+                    )
                     if resp.status_code == 429:
                         self._tor.rotate_ip()
                         self._interruptible_sleep(10, deadline, should_stop)
@@ -359,9 +361,13 @@ class YFinanceProvider:
                     result = data["chart"]["result"][0]
                     timestamps = result.get("timestamp", [])
                     closes = result["indicators"]["quote"][0]["close"]
-                    volumes = result["indicators"]["quote"][0].get("volume", [0] * len(closes))
+                    volumes = result["indicators"]["quote"][0].get(
+                        "volume", [0] * len(closes)
+                    )
                     price = float(next(v for v in reversed(closes) if v is not None))
-                    volume = float(next((v for v in reversed(volumes) if v is not None), 0.0))
+                    volume = float(
+                        next((v for v in reversed(volumes) if v is not None), 0.0)
+                    )
                     self._cache[sym] = (price, volume, now_dt, now_epoch)
 
                     # Keep the real recent bars (not just the last one) so
@@ -372,7 +378,11 @@ class YFinanceProvider:
                         c = closes[i]
                         if c is None:
                             continue
-                        v = volumes[i] if i < len(volumes) and volumes[i] is not None else 0.0
+                        v = (
+                            volumes[i]
+                            if i < len(volumes) and volumes[i] is not None
+                            else 0.0
+                        )
                         ts = (
                             datetime.fromtimestamp(timestamps[i], tz=timezone.utc)
                             if i < len(timestamps) and timestamps[i] is not None
@@ -380,15 +390,23 @@ class YFinanceProvider:
                         )
                         recent.append(
                             MarketTick(
-                                symbol=sym, price=float(c), volume=float(v),
-                                timestamp=ts, source=self.SOURCE_NAME,
+                                symbol=sym,
+                                price=float(c),
+                                volume=float(v),
+                                timestamp=ts,
+                                source=self.SOURCE_NAME,
                             )
                         )
                     if recent:
-                        self._recent_cache[sym] = recent[-self._HISTORY_LEN:]
+                        self._recent_cache[sym] = recent[-self._HISTORY_LEN :]
                     break
-                except Exception:
-                    _log.warning("Tor fetch failed for %s (attempt %d)", sym, attempt + 1, exc_info=True)
+                except Exception:  # noqa: BLE001 -- 3rd-party errors vary; retried
+                    _log.warning(
+                        "Tor fetch failed for %s (attempt %d)",
+                        sym,
+                        attempt + 1,
+                        exc_info=True,
+                    )
                     if attempt < self._MAX_RETRIES - 1:
                         self._tor.rotate_ip()
                         self._interruptible_sleep(10, deadline, should_stop)
@@ -404,7 +422,9 @@ class YFinanceProvider:
         delay = 2.0
         for attempt in range(self._MAX_RETRIES):
             if self._should_abort(deadline, should_stop):
-                _log.warning("warm_cache: time budget/stop signal hit — aborting yfinance fetch.")
+                _log.warning(
+                    "warm_cache: time budget/stop signal hit — aborting yfinance fetch."
+                )
                 return
             try:
                 data = self._yf.download(
@@ -424,11 +444,13 @@ class YFinanceProvider:
                 else:
                     for sym in symbols:
                         try:
-                            self._store_single(sym.upper(), data[sym.upper()], now_epoch)
+                            self._store_single(
+                                sym.upper(), data[sym.upper()], now_epoch
+                            )
                         except (KeyError, TypeError):
                             continue
                 return
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001 -- yfinance errors vary
                 err_str = str(exc).lower()
                 is_rate_limit = "too many requests" in err_str or "429" in err_str
                 if is_rate_limit and attempt < self._MAX_RETRIES - 1:
@@ -457,7 +479,7 @@ class YFinanceProvider:
                 ts = raw_ts.to_pydatetime()
                 if ts.tzinfo is None:
                     ts = ts.replace(tzinfo=timezone.utc)
-            except Exception:
+            except Exception:  # noqa: BLE001 -- fallback to now() on any error
                 ts = datetime.now(timezone.utc)
 
             self._cache[symbol] = (price, volume, ts, now_epoch)
@@ -478,11 +500,16 @@ class YFinanceProvider:
                             source=self.SOURCE_NAME,
                         )
                     )
-                except Exception:
+                except Exception:  # noqa: BLE001 -- row errors vary; logged
+                    _log.debug(
+                        "Skipping unparsable recent-history row for '%s'",
+                        symbol,
+                        exc_info=True,
+                    )
                     continue
             if recent:
                 self._recent_cache[symbol] = recent
-        except Exception:
+        except Exception:  # noqa: BLE001 -- 3rd-party errors vary; logged
             _log.warning(
                 "Failed to parse yfinance data for symbol '%s'",
                 symbol,
@@ -491,6 +518,6 @@ class YFinanceProvider:
 
 
 # Runtime protocol check
-assert isinstance(YFinanceProvider.__new__(YFinanceProvider), IDataProvider), (
-    "YFinanceProvider does not satisfy the IDataProvider Protocol."
-)
+assert isinstance(
+    YFinanceProvider.__new__(YFinanceProvider), IDataProvider
+), "YFinanceProvider does not satisfy the IDataProvider Protocol."

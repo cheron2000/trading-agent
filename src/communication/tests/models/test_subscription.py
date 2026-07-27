@@ -6,8 +6,7 @@ from __future__ import annotations
 
 import pytest
 
-from communication.models import Subscription
-from communication.models import EventPriority
+from communication.models import EventPriority, Subscription
 
 
 class TestSubscription:
@@ -35,7 +34,9 @@ class TestSubscription:
         assert s.is_enabled is False
 
     def test_has_filter(self) -> None:
-        s = Subscription(subscriber_id="x", event_pattern="a.b", filter_expression="k=v")
+        s = Subscription(
+            subscriber_id="x", event_pattern="a.b", filter_expression="k=v"
+        )
         assert s.has_filter is True
 
     def test_no_filter(self) -> None:
@@ -94,7 +95,9 @@ class TestSubscription:
         assert {s1, s2} == {s1}
 
     def test_to_dict(self) -> None:
-        s = Subscription(subscriber_id="svc", event_pattern="a.b", priority=EventPriority.LOW)
+        s = Subscription(
+            subscriber_id="svc", event_pattern="a.b", priority=EventPriority.LOW
+        )
         d = s.to_dict()
         assert d["subscriber_id"] == "svc"
         assert d["event_pattern"] == "a.b"

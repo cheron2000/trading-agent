@@ -42,9 +42,7 @@ class Heartbeat:
     health_state: HealthState
     uptime_seconds: int
     version: str
-    last_seen: datetime = field(
-        default_factory=lambda: datetime.now(timezone.utc)
-    )
+    last_seen: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
 
     # -----------------------------
     # Validation constants
@@ -84,7 +82,7 @@ class Heartbeat:
 
         if self.uptime_seconds > self._MAX_UPTIME_SECONDS:
             raise ValueError("uptime_seconds exceeds allowed limit.")
-        
+
     # -----------------------------
     # Normalization helpers
     # -----------------------------
@@ -156,7 +154,7 @@ class Heartbeat:
             f"uptime={self.uptime_seconds}s, "
             f"version='{self.version}')"
         )
-    
+
     # -----------------------------
     # Equality & Hashing
     # -----------------------------
@@ -203,4 +201,4 @@ class Heartbeat:
         Reserved for future instrumentation only.
         Must remain side-effect free.
         """
-        return None
+        return

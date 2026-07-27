@@ -5,12 +5,14 @@ Unit tests for communication.bus.event_bus.EventBus.
 from __future__ import annotations
 
 import threading
+from typing import Any
+
 import pytest
 
-from foundation.base_event import BaseEvent
 from communication.bus import EventBus
 from communication.interfaces import IEventBus
 from communication.models import Subscription
+from foundation.base_event import BaseEvent
 
 
 def make_event(event_type: str = "market.tick") -> BaseEvent:
@@ -27,7 +29,7 @@ class TestEventBusPublish:
 
     def test_publish_calls_matching_handler(self) -> None:
         bus = EventBus()
-        received = []
+        received: list[Any] = []
         bus.subscribe("market.tick", received.append)
         bus.publish(make_event("market.tick"))
         assert len(received) == 1
@@ -52,7 +54,7 @@ class TestEventBusPublish:
 
     def test_publish_does_not_call_non_matching_handler(self) -> None:
         bus = EventBus()
-        received = []
+        received: list[Any] = []
         bus.subscribe("execution.order", received.append)
         bus.publish(make_event("market.tick"))
         assert received == []
@@ -62,7 +64,7 @@ class TestEventBusWildcard:
 
     def test_wildcard_star_matches_any_suffix(self) -> None:
         bus = EventBus()
-        received = []
+        received: list[Any] = []
         bus.subscribe("market.*", received.append)
         bus.publish(make_event("market.tick"))
         bus.publish(make_event("market.data"))
@@ -70,7 +72,7 @@ class TestEventBusWildcard:
 
     def test_wildcard_star_matches_deeper_segments(self) -> None:
         bus = EventBus()
-        received = []
+        received: list[Any] = []
         bus.subscribe("market.*", received.append)
         bus.publish(make_event("market.tick.extra"))
         # fnmatch: "market.*" DOES match "market.tick.extra" — * matches any chars including dots
@@ -78,7 +80,7 @@ class TestEventBusWildcard:
 
     def test_global_wildcard_matches_all(self) -> None:
         bus = EventBus()
-        received = []
+        received: list[Any] = []
         bus.subscribe("*", received.append)
         bus.publish(make_event("market.tick"))
         bus.publish(make_event("execution.order"))
@@ -86,7 +88,7 @@ class TestEventBusWildcard:
 
     def test_exact_pattern_does_not_match_wildcard_event(self) -> None:
         bus = EventBus()
-        received = []
+        received: list[Any] = []
         bus.subscribe("market.tick", received.append)
         bus.publish(make_event("market.data"))
         assert received == []
@@ -113,7 +115,7 @@ class TestEventBusSubscribeUnsubscribe:
 
     def test_unsubscribe_stops_delivery(self) -> None:
         bus = EventBus()
-        received = []
+        received: list[Any] = []
         sub = bus.subscribe("market.tick", received.append)
         bus.unsubscribe(sub)
         bus.publish(make_event("market.tick"))
@@ -149,7 +151,7 @@ class TestEventBusThreadSafety:
 
     def test_concurrent_publish_and_subscribe(self) -> None:
         bus = EventBus()
-        received = []
+        received: list[Any] = []
         lock = threading.Lock()
 
         def publisher() -> None:
@@ -160,6 +162,7 @@ class TestEventBusThreadSafety:
             def handler(e: BaseEvent) -> None:
                 with lock:
                     received.append(e)
+
             bus.subscribe("market.tick", handler)
 
         threads = [threading.Thread(target=subscriber) for _ in range(3)]

@@ -15,10 +15,11 @@ Python Version: 3.11+
 
 from __future__ import annotations
 
-from typing import Callable, Protocol, runtime_checkable
+from collections.abc import Callable
+from typing import Protocol, runtime_checkable
 
-from foundation.base_event import BaseEvent
 from communication.models.subscription import Subscription
+from foundation.base_event import BaseEvent
 
 
 @runtime_checkable

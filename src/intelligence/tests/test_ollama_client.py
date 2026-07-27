@@ -48,7 +48,9 @@ class TestOllamaClientComplete:
     def test_success_returns_response_text(self, mock_post: MagicMock) -> None:
         mock_post.return_value = MagicMock(
             status_code=200,
-            json=lambda: {"response": '{"action": "HOLD", "confidence": 0.5, "rationale": "flat"}'},
+            json=lambda: {
+                "response": '{"action": "HOLD", "confidence": 0.5, "rationale": "flat"}'
+            },
         )
         client = OllamaClient()
         result = client.complete("some prompt")
@@ -67,7 +69,9 @@ class TestOllamaClientComplete:
             client.complete("prompt")
 
     @patch("intelligence.agent.ollama_client.requests.post")
-    def test_connection_error_raises_connection_error(self, mock_post: MagicMock) -> None:
+    def test_connection_error_raises_connection_error(
+        self, mock_post: MagicMock
+    ) -> None:
         mock_post.side_effect = requests.exceptions.ConnectionError()
         client = OllamaClient()
         with pytest.raises(ConnectionError):

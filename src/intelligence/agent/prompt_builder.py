@@ -39,9 +39,9 @@ class PromptBuilder:
         "You are a quantitative trading assistant. "
         "Analyze the provided market features and respond with a JSON object only. "
         "Your response must be valid JSON with exactly these keys: "
-        "\"action\" (one of: BUY, SELL, HOLD), "
-        "\"confidence\" (float between 0.0 and 1.0), "
-        "\"rationale\" (brief string explanation). "
+        '"action" (one of: BUY, SELL, HOLD), '
+        '"confidence" (float between 0.0 and 1.0), '
+        '"rationale" (brief string explanation). '
         "Do not include any text outside the JSON object."
     )
 

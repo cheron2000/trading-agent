@@ -19,7 +19,7 @@ from __future__ import annotations
 
 import logging
 import threading
-from typing import Callable
+from collections.abc import Callable
 from uuid import uuid4
 
 _log = logging.getLogger(__name__)
@@ -59,10 +59,10 @@ class _ScheduledJob:
         while not self._stop_event.wait(timeout=self.interval_seconds):
             try:
                 self.callback()
-            except Exception:
+            except Exception:  # noqa: BLE001 -- task isolation is intentional
                 _log.exception(
-                    "Scheduler callback raised an unhandled exception "
-                    "(job_id=%s)", self.job_id
+                    "Scheduler callback raised an unhandled exception " "(job_id=%s)",
+                    self.job_id,
                 )
 
 
@@ -106,9 +106,7 @@ class Scheduler:
             ValueError: If ``interval_seconds`` is zero or negative.
         """
         if interval_seconds <= 0:
-            raise ValueError(
-                "interval_seconds must be greater than zero."
-            )
+            raise ValueError("interval_seconds must be greater than zero.")
 
         job_id = str(uuid4())
         job = _ScheduledJob(
@@ -156,6 +154,6 @@ class Scheduler:
 
 
 # Runtime protocol check — ensures Scheduler satisfies IScheduler.
-assert isinstance(Scheduler(), IScheduler), (
-    "Scheduler does not satisfy the IScheduler Protocol."
-)
+assert isinstance(
+    Scheduler(), IScheduler
+), "Scheduler does not satisfy the IScheduler Protocol."

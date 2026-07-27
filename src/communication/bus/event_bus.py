@@ -20,15 +20,14 @@ from __future__ import annotations
 import fnmatch
 import logging
 import threading
-from typing import Callable
+from collections.abc import Callable
 from uuid import uuid4
 
-from foundation.base_event import BaseEvent
-from communication.bus.rate_limiter import RateLimiter, RateLimitExceeded
-from communication.models.event_priority import EventPriority
-from communication.models.event_metadata import EventMetadata
-from communication.models.subscription import Subscription
+from communication.bus.rate_limiter import RateLimiter
 from communication.interfaces.i_event_bus import IEventBus
+from communication.models.event_priority import EventPriority
+from communication.models.subscription import Subscription
+from foundation.base_event import BaseEvent
 
 _log = logging.getLogger(__name__)
 
@@ -91,8 +90,7 @@ class EventBus:
             matching = [
                 handler
                 for sub, handler in self._subscriptions.values()
-                if sub.enabled
-                and fnmatch.fnmatch(event.event_type, sub.event_pattern)
+                if sub.enabled and fnmatch.fnmatch(event.event_type, sub.event_pattern)
             ]
 
         # Invoke handlers outside the lock to prevent deadlocks
@@ -102,7 +100,7 @@ class EventBus:
         for handler in matching:
             try:
                 handler(event)
-            except Exception:
+            except Exception:  # noqa: BLE001 -- handler isolation is intentional
                 _log.exception(
                     "Event handler raised for event_type=%s — "
                     "continuing delivery to remaining subscribers.",
@@ -171,6 +169,6 @@ class EventBus:
 
 
 # Runtime protocol check — ensures EventBus satisfies IEventBus.
-assert isinstance(EventBus(), IEventBus), (
-    "EventBus does not satisfy the IEventBus Protocol."
-)
+assert isinstance(
+    EventBus(), IEventBus
+), "EventBus does not satisfy the IEventBus Protocol."

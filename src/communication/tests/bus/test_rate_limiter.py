@@ -6,16 +6,18 @@ and EventBus rate limiting integration.
 from __future__ import annotations
 
 import time
+from typing import Any
+
 import pytest
 
-from foundation.base_event import BaseEvent
 from communication.bus.event_bus import EventBus
 from communication.bus.rate_limiter import RateLimiter, RateLimitExceeded
-
+from foundation.base_event import BaseEvent
 
 # ---------------------------------------------------------------------------
 # RateLimiter construction
 # ---------------------------------------------------------------------------
+
 
 class TestRateLimiterInit:
 
@@ -46,6 +48,7 @@ class TestRateLimiterInit:
 # ---------------------------------------------------------------------------
 # set_limit()
 # ---------------------------------------------------------------------------
+
 
 class TestSetLimit:
 
@@ -78,6 +81,7 @@ class TestSetLimit:
 # ---------------------------------------------------------------------------
 # check()
 # ---------------------------------------------------------------------------
+
 
 class TestCheck:
 
@@ -132,11 +136,12 @@ class TestCheck:
 # EventBus + RateLimiter integration
 # ---------------------------------------------------------------------------
 
+
 class TestEventBusRateLimiting:
 
     def test_eventbus_without_rate_limiter_works_normally(self) -> None:
         bus = EventBus()
-        received = []
+        received: list[Any] = []
         bus.subscribe("data.*", received.append)
         for _ in range(500):
             bus.publish(BaseEvent(event_type="data.tick"))
@@ -145,7 +150,7 @@ class TestEventBusRateLimiting:
     def test_eventbus_with_rate_limiter_blocks_excess(self) -> None:
         rl = RateLimiter(default_rate=100.0, default_capacity=5.0)
         bus = EventBus(rate_limiter=rl)
-        received = []
+        received: list[Any] = []
         bus.subscribe("data.*", received.append)
 
         # First 5 should pass

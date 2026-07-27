@@ -15,9 +15,9 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import ClassVar
 
-from intelligence.events.decision_event import DecisionEvent
 from execution.models.order import Order
 from execution.models.portfolio import Portfolio
+from intelligence.events.decision_event import DecisionEvent
 
 
 class RiskEngine:

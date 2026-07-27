@@ -23,9 +23,12 @@ from __future__ import annotations
 
 import logging
 import random
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
+from analytics.journal.trade_journal import TradeJournal
+from analytics.metrics.metrics_engine import MetricsEngine
+from analytics.reports.report_generator import ReportGenerator
 from communication.bus.event_bus import EventBus
 from communication.bus.rate_limiter import RateLimiter
 from data.events.feature_vector_event import FeatureVectorEvent
@@ -33,20 +36,16 @@ from data.features.feature_engineer import FeatureEngineer
 from data.models.market_tick import MarketTick
 from data.normalizers.market_normalizer import MarketNormalizer
 from data.pipeline import DataPipeline
+from data.providers.alpha_vantage_provider import AlphaVantageProvider
 from data.providers.i_data_provider import IDataProvider
 from data.providers.market_provider import MarketDataProvider
 from data.providers.yfinance_provider import YFinanceProvider
-from data.providers.alpha_vantage_provider import AlphaVantageProvider
-from intelligence.events.decision_event import DecisionEvent
-from intelligence.strategies.rule_based import SimpleRuleStrategy
 from execution.engine.order_manager import OrderManager
 from execution.engine.portfolio_tracker import PortfolioTracker
 from execution.models.portfolio import Portfolio
 from execution.risk.risk_engine import RiskEngine
-from analytics.journal.trade_journal import TradeJournal
-from analytics.metrics.metrics_engine import MetricsEngine
-from analytics.reports.report_generator import ReportGenerator
-
+from intelligence.events.decision_event import DecisionEvent
+from intelligence.strategies.rule_based import SimpleRuleStrategy
 
 _log = logging.getLogger(__name__)
 
@@ -172,13 +171,12 @@ class PaperTradingRunner:
         # L5 — Execution
         self._portfolio = Portfolio(initial_cash=initial_capital)
         # Price feed: pull from the already-warmed cache (live) or fetch from fixture
-        import time as _time
         self._price_feed: dict[str, float] = {}
         for sym in _FIXTURE_SYMBOLS:
             try:
                 tick = self._provider.fetch(sym)
                 self._price_feed[sym] = round(tick.price, 4)
-            except Exception:
+            except Exception:  # noqa: BLE001 -- fallback price on any error
                 self._price_feed[sym] = 1.0  # fallback placeholder
         self._risk_engine = RiskEngine(
             price_feed=self._price_feed,
@@ -222,6 +220,7 @@ class PaperTradingRunner:
             # In live mode, wait 60s between day cycles to respect rate limits
             if self._live and day < self._run_days - 1:
                 import time as _t
+
                 _t.sleep(60)
 
         return self._report_gen.generate(label=f"paper-trading-{label}")
@@ -242,13 +241,15 @@ class PaperTradingRunner:
             ticks = []
             for i in range(5):
                 p = round(base * (1 + rng.uniform(-0.025, 0.025)), 4)
-                ticks.append(MarketTick(
-                    symbol=symbol,
-                    price=p,
-                    volume=tick.volume,
-                    timestamp=now - timedelta(minutes=5 - i),
-                    source=tick.source,
-                ))
+                ticks.append(
+                    MarketTick(
+                        symbol=symbol,
+                        price=p,
+                        volume=tick.volume,
+                        timestamp=now - timedelta(minutes=5 - i),
+                        source=tick.source,
+                    )
+                )
 
             # Update live price feed so orders fill at today's price
             self._price_feed[symbol.upper()] = round(base, 4)
@@ -295,6 +296,7 @@ class PaperTradingRunner:
                     return
 
                 from execution.models.order import Order
+
                 sell_order = Order(
                     symbol=sym_upper,
                     action="SELL",
@@ -318,8 +320,7 @@ class PaperTradingRunner:
             self._portfolio_tracker.apply_fill(fill)
             self._entry_prices[sym_upper] = fill.fill_price
 
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 -- symbol isolation is intentional
             import logging
-            logging.getLogger(__name__).warning(
-                "Tick failed for %s: %s", symbol, exc
-            )
+
+            logging.getLogger(__name__).warning("Tick failed for %s: %s", symbol, exc)

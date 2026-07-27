@@ -6,8 +6,9 @@ All assertions use == (not is) except for None checks.
 
 from __future__ import annotations
 
-import pytest
 from dataclasses import FrozenInstanceError
+
+import pytest
 
 from execution.events.order_event import OrderEvent
 from execution.models.order import Order
@@ -32,14 +33,14 @@ class TestOrderEvent:
 
     def test_none_order_raises_value_error(self) -> None:
         with pytest.raises(ValueError, match="order must not be None"):
-            OrderEvent(event_type="execution.order", order=None)
+            OrderEvent(event_type="execution.order", order=None)  # type: ignore[arg-type]
 
     def test_to_dict_contains_order_key(self) -> None:
         order = _make_order()
         event = OrderEvent(event_type="execution.order", order=order)
         d = event.to_dict()
         assert "order" in d
-        assert d["order"]["symbol"] == "AAPL"
+        assert d["order"]["symbol"] == "AAPL"  # type: ignore[index]
 
     def test_event_type_set_correctly(self) -> None:
         order = _make_order()

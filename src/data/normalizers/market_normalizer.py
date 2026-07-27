@@ -60,9 +60,7 @@ class MarketNormalizer:
             TypeError:  If ``raw`` is not a dict.
         """
         if not isinstance(raw, dict):
-            raise TypeError(
-                f"raw must be a dict, got {type(raw).__name__}."
-            )
+            raise TypeError(f"raw must be a dict, got {type(raw).__name__}.")
 
         symbol = self._extract_symbol(raw)
         price = self._extract_price(raw)
@@ -87,9 +85,7 @@ class MarketNormalizer:
             raise ValueError("Missing required field: 'symbol'.")
         value = raw["symbol"]
         if not isinstance(value, str) or not value.strip():
-            raise ValueError(
-                f"'symbol' must be a non-empty string, got: {value!r}."
-            )
+            raise ValueError(f"'symbol' must be a non-empty string, got: {value!r}.")
         return value.strip().upper()
 
     @staticmethod
@@ -103,9 +99,7 @@ class MarketNormalizer:
                 f"'price' must be numeric, got: {raw['price']!r}."
             ) from exc
         if price <= 0:
-            raise ValueError(
-                f"'price' must be greater than zero, got: {price}."
-            )
+            raise ValueError(f"'price' must be greater than zero, got: {price}.")
         return price
 
     @staticmethod
@@ -119,9 +113,7 @@ class MarketNormalizer:
                 f"'volume' must be numeric, got: {raw['volume']!r}."
             ) from exc
         if volume < 0:
-            raise ValueError(
-                f"'volume' must not be negative, got: {volume}."
-            )
+            raise ValueError(f"'volume' must not be negative, got: {volume}.")
         return volume
 
     @staticmethod
@@ -139,7 +131,7 @@ class MarketNormalizer:
                     f"'timestamp' is not a valid ISO-8601 string: {value!r}."
                 ) from exc
         else:
-            raise ValueError(
+            raise TypeError(
                 f"'timestamp' must be a datetime or ISO-8601 string, "
                 f"got: {type(value).__name__}."
             )

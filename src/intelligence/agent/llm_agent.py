@@ -16,7 +16,7 @@ Python Version: 3.11+
 from __future__ import annotations
 
 import json
-from typing import Any, ClassVar, Literal, Protocol, runtime_checkable
+from typing import Any, ClassVar, Protocol, runtime_checkable
 
 from data.models.feature_vector import FeatureVector
 from intelligence.agent.prompt_builder import PromptBuilder
@@ -117,12 +117,10 @@ class LLMAgent:
         try:
             data = json.loads(raw)
         except json.JSONDecodeError as exc:
-            raise ValueError(
-                f"LLM response is not valid JSON: {raw!r}"
-            ) from exc
+            raise ValueError(f"LLM response is not valid JSON: {raw!r}") from exc
 
         if not isinstance(data, dict):
-            raise ValueError(
+            raise TypeError(
                 f"LLM response must be a JSON object, got: {type(data).__name__}."
             )
 
@@ -151,9 +149,7 @@ class LLMAgent:
         # Validate rationale
         rationale = data.get("rationale", "")
         if not isinstance(rationale, str) or not rationale.strip():
-            raise ValueError(
-                "LLM response 'rationale' must be a non-empty string."
-            )
+            raise ValueError("LLM response 'rationale' must be a non-empty string.")
 
         return Decision(
             symbol=symbol,

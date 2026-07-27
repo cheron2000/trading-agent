@@ -14,7 +14,6 @@ Python Version: 3.11+
 from __future__ import annotations
 
 import threading
-from typing import ClassVar
 
 
 class Portfolio:
@@ -65,9 +64,7 @@ class Portfolio:
     # Mutations
     # ------------------------------------------------------------------
 
-    def apply_buy(
-        self, symbol: str, quantity: float, price: float
-    ) -> None:
+    def apply_buy(self, symbol: str, quantity: float, price: float) -> None:
         """Apply a BUY fill — deduct cash, update position.
 
         Args:
@@ -94,15 +91,11 @@ class Portfolio:
             old_qty, old_avg = existing
             new_qty = old_qty + quantity
             new_avg = (
-                (old_qty * old_avg + quantity * price) / new_qty
-                if new_qty > 0
-                else 0.0
+                (old_qty * old_avg + quantity * price) / new_qty if new_qty > 0 else 0.0
             )
             self._positions[symbol] = (new_qty, new_avg)
 
-    def apply_sell(
-        self, symbol: str, quantity: float, price: float
-    ) -> None:
+    def apply_sell(self, symbol: str, quantity: float, price: float) -> None:
         """Apply a SELL fill — add cash, reduce position.
 
         Args:

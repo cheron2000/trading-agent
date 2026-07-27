@@ -14,6 +14,7 @@ import logging
 import sys
 from abc import ABC, abstractmethod
 from pathlib import Path
+from typing import ClassVar
 
 from foundation.constants import (
     DEFAULT_DATE_FORMAT,
@@ -54,7 +55,7 @@ class ILogger(ABC):
 class ProductionLogger(ILogger):
     """Production-ready logger implementation."""
 
-    _LEVEL_MAP: dict[LogLevel, int] = {
+    _LEVEL_MAP: ClassVar[dict[LogLevel, int]] = {
         LogLevel.DEBUG: logging.DEBUG,
         LogLevel.INFO: logging.INFO,
         LogLevel.WARNING: logging.WARNING,

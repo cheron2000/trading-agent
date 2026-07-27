@@ -8,20 +8,20 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-import pytest
-
 from analytics.journal.trade_journal import TradeJournal
 from analytics.metrics.metrics_engine import MetricsEngine
 from analytics.reports.report_generator import ReportGenerator
 from execution.events.fill_event import FillEvent
 from intelligence.events.decision_event import DecisionEvent
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
 
-def _make_fill(symbol: str = "AAPL", price: float = 150.0, qty: float = 10.0) -> FillEvent:
+
+def _make_fill(
+    symbol: str = "AAPL", price: float = 150.0, qty: float = 10.0
+) -> FillEvent:
     return FillEvent(
         event_type="execution.fill",
         order_id="order-001",
@@ -60,12 +60,19 @@ def _make_report(n_entries: int = 0, label: str = "") -> dict:
 # Tests
 # ---------------------------------------------------------------------------
 
+
 class TestReportGenerator:
 
     def test_generate_returns_all_required_keys(self) -> None:
         report = _make_report()
-        for key in ("label", "generated_at", "journal_integrity",
-                    "total_journal_entries", "metrics", "recent_trades"):
+        for key in (
+            "label",
+            "generated_at",
+            "journal_integrity",
+            "total_journal_entries",
+            "metrics",
+            "recent_trades",
+        ):
             assert key in report
 
     def test_label_passed_through(self) -> None:
@@ -94,8 +101,14 @@ class TestReportGenerator:
     def test_metrics_dict_has_all_keys(self) -> None:
         report = _make_report(n_entries=2)
         metrics = report["metrics"]
-        for key in ("total_trades", "total_pnl", "total_return",
-                    "sharpe_ratio", "max_drawdown", "win_rate"):
+        for key in (
+            "total_trades",
+            "total_pnl",
+            "total_return",
+            "sharpe_ratio",
+            "max_drawdown",
+            "win_rate",
+        ):
             assert key in metrics
 
     def test_empty_journal_gives_empty_recent_trades(self) -> None:

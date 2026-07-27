@@ -55,7 +55,5 @@ class ReportGenerator:
             "journal_integrity": integrity_ok,
             "total_journal_entries": len(entries),
             "metrics": metrics.to_dict(),
-            "recent_trades": [
-                e.to_dict() for e in entries[-10:]
-            ],
+            "recent_trades": [e.to_dict() for e in entries[-10:]],
         }

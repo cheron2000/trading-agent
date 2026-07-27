@@ -13,7 +13,7 @@ Python Version: 3.11+
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import ClassVar
 
@@ -51,7 +51,9 @@ class FeatureVector:
             raise ValueError("timestamp must not be None.")
         if not isinstance(self.features, dict):
             raise TypeError("features must be a dict.")
-        if not (self._MIN_SOURCE_QUALITY <= self.source_quality <= self._MAX_SOURCE_QUALITY):
+        if not (
+            self._MIN_SOURCE_QUALITY <= self.source_quality <= self._MAX_SOURCE_QUALITY
+        ):
             raise ValueError("source_quality must be between 0.0 and 1.0.")
 
     # ------------------------------------------------------------------

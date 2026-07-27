@@ -7,7 +7,7 @@ DashboardState — thread-safe in-memory state feeding the web dashboard.
 Populated two ways:
   1. Event-driven: subscribed to the EventBus for DecisionEvent and
      FillEvent (same pattern as the terminal LiveView) — zero imports
-     from execution/intelligence internals, only BaseEvent.to_dict().
+     from execution/intelligence internals, only the _EventLike Protocol.
   2. Direct push: MetricsEngine/Portfolio in this repo are pull-based
      (no events published), so run_hour.py calls update_metrics()/
      update_positions() once per cycle.
@@ -25,9 +25,24 @@ from __future__ import annotations
 import threading
 from collections import deque
 from datetime import datetime, timezone
-from typing import Any
+from typing import Any, Protocol
 
-from foundation.base_event import BaseEvent
+
+class _EventLike(Protocol):
+    """Structural type for anything record_event can accept.
+
+    Deliberately a Protocol rather than importing foundation.BaseEvent:
+    this module only ever needs duck-typed access (event_type, to_dict(),
+    optional symbol/action/etc.), so it shouldn't require callers to
+    construct a real BaseEvent subclass - matching the existing rule
+    that this layer has zero import-time coupling to other layers.
+    """
+
+    @property
+    def event_type(self) -> str: ...
+
+    def to_dict(self) -> dict[str, Any]: ...
+
 
 _MAX_RECENT_EVENTS = 200
 _MAX_RECENT_FILLS = 100
@@ -51,7 +66,7 @@ class DashboardState:
     # Writers
     # ------------------------------------------------------------------
 
-    def record_event(self, event: BaseEvent) -> None:
+    def record_event(self, event: _EventLike) -> None:
         """EventBus handler: record any event to the raw feed, and
         additionally index DecisionEvent/FillEvent for the summary
         views if the event carries those fields.
@@ -108,7 +123,9 @@ class DashboardState:
         with self._lock:
             return {
                 "started_at": self._started_at.isoformat(),
-                "last_update": self._last_update.isoformat() if self._last_update else None,
+                "last_update": (
+                    self._last_update.isoformat() if self._last_update else None
+                ),
                 "cycle": self._cycle,
                 "metrics": dict(self._metrics),
                 "positions": dict(self._positions),

@@ -20,8 +20,8 @@ from __future__ import annotations
 import statistics
 from typing import ClassVar
 
-from data.models.market_tick import MarketTick
 from data.models.feature_vector import FeatureVector
+from data.models.market_tick import MarketTick
 
 
 class FeatureEngineer:
@@ -124,9 +124,7 @@ class FeatureEngineer:
         price_mean = statistics.mean(prices)
         price_std = statistics.pstdev(prices) if n >= 2 else 0.0
         price_change_pct = (
-            (prices[-1] - prices[0]) / prices[0] * 100.0
-            if prices[0] != 0
-            else 0.0
+            (prices[-1] - prices[0]) / prices[0] * 100.0 if prices[0] != 0 else 0.0
         )
         volume_mean = statistics.mean(volumes)
         volume_total = sum(volumes)

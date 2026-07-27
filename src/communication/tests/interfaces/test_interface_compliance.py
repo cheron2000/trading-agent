@@ -7,29 +7,33 @@ and IHealthMonitor via isinstance() checks and structural matching.
 
 from __future__ import annotations
 
-from typing import Callable
+from collections.abc import Callable
 
-from foundation.base_event import BaseEvent
-from communication.interfaces import IEventBus, IScheduler, IHealthMonitor
+from communication.interfaces import IEventBus, IHealthMonitor, IScheduler
 from communication.models import Subscription
-from communication.models.heartbeat import Heartbeat
 from communication.models.health_state import HealthState
-
+from communication.models.heartbeat import Heartbeat
+from foundation.base_event import BaseEvent
 
 # ---------------------------------------------------------------------------
 # Stub implementations
 # ---------------------------------------------------------------------------
 
+
 class StubEventBus:
     def publish(self, event: BaseEvent) -> None: ...
-    def subscribe(self, event_pattern: str, handler: Callable[[BaseEvent], None]) -> Subscription:
+    def subscribe(
+        self, event_pattern: str, handler: Callable[[BaseEvent], None]
+    ) -> Subscription:
         return Subscription(subscriber_id="stub", event_pattern=event_pattern)
+
     def unsubscribe(self, subscription: Subscription) -> None: ...
 
 
 class StubScheduler:
     def schedule(self, interval_seconds: float, callback: Callable[[], None]) -> str:
         return "job-1"
+
     def cancel(self, job_id: str) -> None: ...
 
 
@@ -42,26 +46,32 @@ class StubHealthMonitor:
 
 class IncompleteEventBus:
     def publish(self, event: BaseEvent) -> None: ...
-    def subscribe(self, event_pattern: str, handler: Callable[[BaseEvent], None]) -> Subscription:
+    def subscribe(
+        self, event_pattern: str, handler: Callable[[BaseEvent], None]
+    ) -> Subscription:
         return Subscription(subscriber_id="x", event_pattern=event_pattern)
+
     # missing unsubscribe
 
 
 class IncompleteScheduler:
     def schedule(self, interval_seconds: float, callback: Callable[[], None]) -> str:
         return "job-1"
+
     # missing cancel
 
 
 class IncompleteHealthMonitor:
     def register(self, component_name: str) -> None: ...
     def record_heartbeat(self, heartbeat: Heartbeat) -> None: ...
+
     # missing is_alive
 
 
 # ---------------------------------------------------------------------------
 # IEventBus compliance
 # ---------------------------------------------------------------------------
+
 
 class TestIEventBusCompliance:
 
@@ -97,6 +107,7 @@ class TestIEventBusCompliance:
 # IScheduler compliance
 # ---------------------------------------------------------------------------
 
+
 class TestISchedulerCompliance:
 
     def test_stub_satisfies_protocol(self) -> None:
@@ -121,6 +132,7 @@ class TestISchedulerCompliance:
 # ---------------------------------------------------------------------------
 # IHealthMonitor compliance
 # ---------------------------------------------------------------------------
+
 
 class TestIHealthMonitorCompliance:
 

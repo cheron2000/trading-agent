@@ -69,19 +69,17 @@ from foundation.models.base_model import BaseModel
 from foundation.models.metadata import Metadata
 from foundation.models.version import Version
 
-__all__ = [
+__all__ = [  # noqa: RUF022 -- intentionally grouped by category, not alphabetical
     # Core
     "BaseEvent",
     "BasePlugin",
     "ConfigManager",
     "ILogger",
     "ProductionLogger",
-
     # Models
     "BaseModel",
     "Metadata",
     "Version",
-
     # Constants
     "SYSTEM_NAME",
     "SYSTEM_SHORT_NAME",
@@ -89,7 +87,6 @@ __all__ = [
     "EVENT_SCHEMA_VERSION",
     "DEFAULT_CONFIG_FILENAME",
     "DEFAULT_LOGGER_NAME",
-
     # Enums
     "LogLevel",
     "Environment",
@@ -101,7 +98,6 @@ __all__ = [
     "SortOrder",
     "Enablement",
     "SingletonStatus",
-
     # Exceptions
     "FoundationError",
     "ConfigurationError",

@@ -8,3 +8,6 @@ coverage==7.15.2
 
 # Code quality
 colorama==0.4.6
+ruff==0.16.0
+black==26.5.1
+mypy==2.3.0

@@ -12,12 +12,12 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from data.models.market_tick import MarketTick
-from data.models.feature_vector import FeatureVector
-from data.features.feature_engineer import FeatureEngineer
 from data.events.feature_vector_event import FeatureVectorEvent
-from data.pipeline import DataPipeline
+from data.features.feature_engineer import FeatureEngineer
+from data.models.feature_vector import FeatureVector
+from data.models.market_tick import MarketTick
 from data.normalizers.market_normalizer import MarketNormalizer
+from data.pipeline import DataPipeline
 
 TS = datetime(2024, 1, 15, 14, 30, 0, tzinfo=timezone.utc)
 
@@ -28,12 +28,15 @@ def make_tick(
     symbol: str = "AAPL",
     ts: datetime = TS,
 ) -> MarketTick:
-    return MarketTick(symbol=symbol, price=price, volume=volume, timestamp=ts, source="fixture")
+    return MarketTick(
+        symbol=symbol, price=price, volume=volume, timestamp=ts, source="fixture"
+    )
 
 
 # ---------------------------------------------------------------------------
 # FeatureEngineer — constructor
 # ---------------------------------------------------------------------------
+
 
 class TestFeatureEngineerInit:
 
@@ -62,6 +65,7 @@ class TestFeatureEngineerInit:
 # FeatureEngineer — compute() validation
 # ---------------------------------------------------------------------------
 
+
 class TestFeatureEngineerValidation:
 
     def test_empty_ticks_raises(self) -> None:
@@ -85,14 +89,13 @@ class TestFeatureEngineerValidation:
 # FeatureEngineer — deterministic feature values
 # ---------------------------------------------------------------------------
 
+
 class TestFeatureEngineerFeatureValues:
 
     def setup_method(self) -> None:
         self.prices = [100.0, 102.0, 101.0, 103.0, 105.0]
         self.volumes = [1000.0, 1100.0, 900.0, 1200.0, 1050.0]
-        self.ticks = [
-            make_tick(p, v) for p, v in zip(self.prices, self.volumes)
-        ]
+        self.ticks = [make_tick(p, v) for p, v in zip(self.prices, self.volumes)]
         self.fe = FeatureEngineer(window_size=5)
         self.fv = self.fe.compute(self.ticks)
 
@@ -127,8 +130,14 @@ class TestFeatureEngineerFeatureValues:
 
     def test_all_eight_features_present(self) -> None:
         expected_keys = {
-            "price_latest", "price_mean", "price_std", "price_change_pct",
-            "volume_mean", "volume_total", "high", "low",
+            "price_latest",
+            "price_mean",
+            "price_std",
+            "price_change_pct",
+            "volume_mean",
+            "volume_total",
+            "high",
+            "low",
         }
         assert set(self.fv.features.keys()) == expected_keys
 
@@ -140,6 +149,7 @@ class TestFeatureEngineerFeatureValues:
 # ---------------------------------------------------------------------------
 # FeatureEngineer — single tick edge cases
 # ---------------------------------------------------------------------------
+
 
 class TestFeatureEngineerSingleTick:
 
@@ -163,6 +173,7 @@ class TestFeatureEngineerSingleTick:
 # FeatureEngineer — source_quality
 # ---------------------------------------------------------------------------
 
+
 class TestFeatureEngineerSourceQuality:
 
     def test_full_window_quality_is_1(self) -> None:
@@ -185,6 +196,7 @@ class TestFeatureEngineerSourceQuality:
 
     def test_timestamp_is_latest_tick(self) -> None:
         from datetime import timedelta
+
         ts1 = TS
         ts2 = TS + timedelta(seconds=60)
         ticks = [make_tick(100.0, ts=ts1), make_tick(101.0, ts=ts2)]
@@ -202,12 +214,16 @@ class TestFeatureEngineerSourceQuality:
 # DataPipeline — integration tests
 # ---------------------------------------------------------------------------
 
+
 class TestDataPipeline:
 
     def _make_pipeline(self, symbol: str = "AAPL", price: float = 182.5):
         tick = MarketTick(
-            symbol=symbol, price=price, volume=1_000_000.0,
-            timestamp=TS, source="fixture",
+            symbol=symbol,
+            price=price,
+            volume=1_000_000.0,
+            timestamp=TS,
+            source="fixture",
         )
         provider = MagicMock()
         provider.fetch.return_value = tick

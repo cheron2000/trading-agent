@@ -4,20 +4,21 @@ Unit tests for communication.models.plugin_manifest.
 
 from __future__ import annotations
 
+from typing import Any
+
 import pytest
 
 from communication.models import PluginManifest
 
-
-VALID_KWARGS = dict(
-    plugin_id="plugin-001",
-    name="MarketDataPlugin",
-    version="1.0.0",
-    description="Provides market data.",
-    author="AITOS Team",
-    api_version="1.0.0",
-    entry_point="plugins.market_data.MarketDataPlugin",
-)
+VALID_KWARGS: dict[str, Any] = {
+    "plugin_id": "plugin-001",
+    "name": "MarketDataPlugin",
+    "version": "1.0.0",
+    "description": "Provides market data.",
+    "author": "AITOS Team",
+    "api_version": "1.0.0",
+    "entry_point": "plugins.market_data.MarketDataPlugin",
+}
 
 
 class TestPluginManifest:
@@ -44,7 +45,10 @@ class TestPluginManifest:
         assert m.publishes_events is True
         assert m.subscribes_to_events is True
 
-    @pytest.mark.parametrize("field", ["plugin_id", "name", "version", "author", "api_version", "entry_point"])
+    @pytest.mark.parametrize(
+        "field",
+        ["plugin_id", "name", "version", "author", "api_version", "entry_point"],
+    )
     def test_empty_required_field_raises(self, field: str) -> None:
         kwargs = {**VALID_KWARGS, field: ""}
         with pytest.raises(ValueError):

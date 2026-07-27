@@ -10,45 +10,45 @@ Wires all 7 layers together end-to-end:
 from __future__ import annotations
 
 import io
-import json
+from collections.abc import Generator
 from datetime import datetime, timezone
-from pathlib import Path
+from typing import Any
 
 import pytest
 
-# Foundation
-from foundation.base_event import BaseEvent
+from analytics.journal.trade_journal import TradeJournal
+
+# Analytics
+from analytics.metrics.metrics_engine import MetricsEngine
 
 # Communication
 from communication.bus.event_bus import EventBus
 
-# Data
-from data.models.market_tick import MarketTick
-from data.models.feature_vector import FeatureVector
+# Dashboard
+from dashboard.shell.live_view import LiveView
 from data.events.feature_vector_event import FeatureVectorEvent
 from data.features.feature_engineer import FeatureEngineer
+from data.models.feature_vector import FeatureVector
+
+# Data
+from data.models.market_tick import MarketTick
 from data.normalizers.market_normalizer import MarketNormalizer
 from data.pipeline import DataPipeline
-
-# Intelligence
-from intelligence.models.decision import Decision
-from intelligence.events.decision_event import DecisionEvent
-from intelligence.strategies.rule_based import SimpleRuleStrategy
+from execution.engine.order_manager import OrderManager
+from execution.engine.portfolio_tracker import PortfolioTracker
+from execution.events.fill_event import FillEvent
 
 # Execution
 from execution.models.order import Order
 from execution.models.portfolio import Portfolio
-from execution.events.fill_event import FillEvent
 from execution.risk.risk_engine import RiskEngine
-from execution.engine.order_manager import OrderManager
-from execution.engine.portfolio_tracker import PortfolioTracker
 
-# Analytics
-from analytics.metrics.metrics_engine import MetricsEngine
-from analytics.journal.trade_journal import TradeJournal
+# Foundation
+from foundation.base_event import BaseEvent
+from intelligence.events.decision_event import DecisionEvent
 
-# Dashboard
-from dashboard.shell.live_view import LiveView
+# Intelligence
+from intelligence.strategies.rule_based import SimpleRuleStrategy
 
 TS = datetime(2024, 1, 15, 14, 30, 0, tzinfo=timezone.utc)
 PRICE_FEED = {"AAPL": 182.50, "MSFT": 374.25, "TSLA": 218.90}
@@ -59,8 +59,9 @@ INITIAL_CASH = 100_000.0
 # Shared fixtures
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture()
-def bus() -> EventBus:
+def bus() -> Generator[EventBus, None, None]:
     b = EventBus()
     yield b
     b.clear()
@@ -134,18 +135,28 @@ def make_feature_vector(symbol: str = "AAPL", pct: float = 2.5) -> FeatureVector
 # Layer 3 → Layer 4: DataPipeline publishes FeatureVectorEvent
 # ---------------------------------------------------------------------------
 
+
 class TestDataToIntelligencePipeline:
 
     def test_data_pipeline_publishes_feature_vector_event(self, bus: EventBus) -> None:
-        received = []
+        received: list[Any] = []
         bus.subscribe("data.feature_vector", received.append)
 
-        tick = MarketTick(symbol="AAPL", price=182.50, volume=1_200_000.0,
-                          timestamp=TS, source="fixture")
-        provider_mock = type("P", (), {
-            "source_name": "fixture",
-            "fetch": lambda self, s: tick,
-        })()
+        tick = MarketTick(
+            symbol="AAPL",
+            price=182.50,
+            volume=1_200_000.0,
+            timestamp=TS,
+            source="fixture",
+        )
+        provider_mock = type(
+            "P",
+            (),
+            {
+                "source_name": "fixture",
+                "fetch": lambda self, s: tick,
+            },
+        )()
 
         pipeline = DataPipeline(
             provider=provider_mock,
@@ -161,12 +172,21 @@ class TestDataToIntelligencePipeline:
         assert received[0].event_type == "data.feature_vector"
 
     def test_feature_vector_event_has_all_features(self, bus: EventBus) -> None:
-        tick = MarketTick(symbol="AAPL", price=182.50, volume=1_200_000.0,
-                          timestamp=TS, source="fixture")
-        provider_mock = type("P", (), {
-            "source_name": "fixture",
-            "fetch": lambda self, s: tick,
-        })()
+        tick = MarketTick(
+            symbol="AAPL",
+            price=182.50,
+            volume=1_200_000.0,
+            timestamp=TS,
+            source="fixture",
+        )
+        provider_mock = type(
+            "P",
+            (),
+            {
+                "source_name": "fixture",
+                "fetch": lambda self, s: tick,
+            },
+        )()
         pipeline = DataPipeline(
             provider=provider_mock,
             normalizer=MarketNormalizer(source="fixture"),
@@ -181,6 +201,7 @@ class TestDataToIntelligencePipeline:
 # ---------------------------------------------------------------------------
 # Layer 4: SimpleRuleStrategy → DecisionEvent
 # ---------------------------------------------------------------------------
+
 
 class TestStrategyToDecision:
 
@@ -225,9 +246,12 @@ class TestStrategyToDecision:
 # Layer 5: RiskEngine → Order
 # ---------------------------------------------------------------------------
 
+
 class TestRiskEngineApproval:
 
-    def test_buy_decision_approved(self, risk_engine: RiskEngine, portfolio: Portfolio) -> None:
+    def test_buy_decision_approved(
+        self, risk_engine: RiskEngine, portfolio: Portfolio
+    ) -> None:
         decision = make_decision_event("AAPL", "BUY", confidence=0.85)
         order = risk_engine.approve(decision, portfolio)
         assert order is not None
@@ -235,25 +259,36 @@ class TestRiskEngineApproval:
         assert order.action == "BUY"
         assert order.symbol == "AAPL"
 
-    def test_hold_decision_rejected(self, risk_engine: RiskEngine, portfolio: Portfolio) -> None:
+    def test_hold_decision_rejected(
+        self, risk_engine: RiskEngine, portfolio: Portfolio
+    ) -> None:
         decision = make_decision_event("AAPL", "HOLD", confidence=0.9)
         assert risk_engine.approve(decision, portfolio) is None
 
-    def test_low_confidence_rejected(self, risk_engine: RiskEngine, portfolio: Portfolio) -> None:
+    def test_low_confidence_rejected(
+        self, risk_engine: RiskEngine, portfolio: Portfolio
+    ) -> None:
         decision = make_decision_event("AAPL", "BUY", confidence=0.3)
         assert risk_engine.approve(decision, portfolio) is None
 
-    def test_unknown_symbol_rejected(self, risk_engine: RiskEngine, portfolio: Portfolio) -> None:
+    def test_unknown_symbol_rejected(
+        self, risk_engine: RiskEngine, portfolio: Portfolio
+    ) -> None:
         decision = make_decision_event("UNKNOWN", "BUY", confidence=0.9)
         assert risk_engine.approve(decision, portfolio) is None
 
-    def test_order_quantity_calculated_correctly(self, risk_engine: RiskEngine, portfolio: Portfolio) -> None:
+    def test_order_quantity_calculated_correctly(
+        self, risk_engine: RiskEngine, portfolio: Portfolio
+    ) -> None:
         decision = make_decision_event("AAPL", "BUY", confidence=0.85)
         order = risk_engine.approve(decision, portfolio)
+        assert order is not None
         expected_qty = round((INITIAL_CASH * 0.10) / PRICE_FEED["AAPL"], 6)
         assert order.quantity == pytest.approx(expected_qty)
 
-    def test_sell_decision_approved(self, risk_engine: RiskEngine, portfolio: Portfolio) -> None:
+    def test_sell_decision_approved(
+        self, risk_engine: RiskEngine, portfolio: Portfolio
+    ) -> None:
         decision = make_decision_event("AAPL", "SELL", confidence=0.80)
         order = risk_engine.approve(decision, portfolio)
         assert order is not None
@@ -264,29 +299,47 @@ class TestRiskEngineApproval:
 # Layer 5: OrderManager → FillEvent
 # ---------------------------------------------------------------------------
 
+
 class TestOrderManagerExecution:
 
     def test_execute_returns_fill_event(self, order_manager: OrderManager) -> None:
-        order = Order(symbol="AAPL", action="BUY", quantity=10.0,
-                      order_type="MARKET", strategy_id="test")
+        order = Order(
+            symbol="AAPL",
+            action="BUY",
+            quantity=10.0,
+            order_type="MARKET",
+            strategy_id="test",
+        )
         fill = order_manager.execute(order)
         assert isinstance(fill, FillEvent)
         assert fill.symbol == "AAPL"
         assert fill.action == "BUY"
         assert fill.fill_price == PRICE_FEED["AAPL"]
 
-    def test_execute_publishes_fill_event_on_bus(self, bus: EventBus, order_manager: OrderManager) -> None:
-        received = []
+    def test_execute_publishes_fill_event_on_bus(
+        self, bus: EventBus, order_manager: OrderManager
+    ) -> None:
+        received: list[Any] = []
         bus.subscribe("execution.fill", received.append)
-        order = Order(symbol="AAPL", action="BUY", quantity=5.0,
-                      order_type="MARKET", strategy_id="test")
+        order = Order(
+            symbol="AAPL",
+            action="BUY",
+            quantity=5.0,
+            order_type="MARKET",
+            strategy_id="test",
+        )
         order_manager.execute(order)
         assert len(received) == 1
         assert received[0].event_type == "execution.fill"
 
     def test_execute_unknown_symbol_raises(self, order_manager: OrderManager) -> None:
-        order = Order(symbol="UNKNOWN", action="BUY", quantity=1.0,
-                      order_type="MARKET", strategy_id="test")
+        order = Order(
+            symbol="UNKNOWN",
+            action="BUY",
+            quantity=1.0,
+            order_type="MARKET",
+            strategy_id="test",
+        )
         with pytest.raises(ValueError):
             order_manager.execute(order)
 
@@ -299,12 +352,19 @@ class TestOrderManagerExecution:
 # Layer 5: PortfolioTracker
 # ---------------------------------------------------------------------------
 
+
 class TestPortfolioTracker:
 
     def test_apply_buy_fill_updates_position(self, tracker: PortfolioTracker) -> None:
-        fill = FillEvent(event_type="execution.fill", order_id="o1",
-                         symbol="AAPL", action="BUY", quantity=10.0,
-                         fill_price=182.50, timestamp=TS)
+        fill = FillEvent(
+            event_type="execution.fill",
+            order_id="o1",
+            symbol="AAPL",
+            action="BUY",
+            quantity=10.0,
+            fill_price=182.50,
+            timestamp=TS,
+        )
         tracker.apply_fill(fill)
         pos = tracker.get_position("AAPL", 182.50)
         assert pos is not None
@@ -312,28 +372,52 @@ class TestPortfolioTracker:
         assert pos.avg_entry_price == pytest.approx(182.50)
 
     def test_apply_buy_deducts_cash(self, tracker: PortfolioTracker) -> None:
-        fill = FillEvent(event_type="execution.fill", order_id="o1",
-                         symbol="AAPL", action="BUY", quantity=10.0,
-                         fill_price=182.50, timestamp=TS)
+        fill = FillEvent(
+            event_type="execution.fill",
+            order_id="o1",
+            symbol="AAPL",
+            action="BUY",
+            quantity=10.0,
+            fill_price=182.50,
+            timestamp=TS,
+        )
         tracker.apply_fill(fill)
         expected_cash = INITIAL_CASH - (10.0 * 182.50)
         assert tracker.cash == pytest.approx(expected_cash)
 
     def test_apply_sell_fill_removes_position(self, tracker: PortfolioTracker) -> None:
-        buy = FillEvent(event_type="execution.fill", order_id="o1",
-                        symbol="AAPL", action="BUY", quantity=10.0,
-                        fill_price=182.50, timestamp=TS)
-        sell = FillEvent(event_type="execution.fill", order_id="o2",
-                         symbol="AAPL", action="SELL", quantity=10.0,
-                         fill_price=190.0, timestamp=TS)
+        buy = FillEvent(
+            event_type="execution.fill",
+            order_id="o1",
+            symbol="AAPL",
+            action="BUY",
+            quantity=10.0,
+            fill_price=182.50,
+            timestamp=TS,
+        )
+        sell = FillEvent(
+            event_type="execution.fill",
+            order_id="o2",
+            symbol="AAPL",
+            action="SELL",
+            quantity=10.0,
+            fill_price=190.0,
+            timestamp=TS,
+        )
         tracker.apply_fill(buy)
         tracker.apply_fill(sell)
         assert tracker.get_position("AAPL", 190.0) is None
 
     def test_portfolio_value_correct(self, tracker: PortfolioTracker) -> None:
-        fill = FillEvent(event_type="execution.fill", order_id="o1",
-                         symbol="AAPL", action="BUY", quantity=10.0,
-                         fill_price=182.50, timestamp=TS)
+        fill = FillEvent(
+            event_type="execution.fill",
+            order_id="o1",
+            symbol="AAPL",
+            action="BUY",
+            quantity=10.0,
+            fill_price=182.50,
+            timestamp=TS,
+        )
         tracker.apply_fill(fill)
         value = tracker.portfolio_value({"AAPL": 200.0})
         expected = (INITIAL_CASH - 10.0 * 182.50) + 10.0 * 200.0
@@ -348,12 +432,19 @@ class TestPortfolioTracker:
 # Layer 6: TradeJournal
 # ---------------------------------------------------------------------------
 
+
 class TestTradeJournal:
 
     def _make_fill(self) -> FillEvent:
-        return FillEvent(event_type="execution.fill", order_id="o1",
-                         symbol="AAPL", action="BUY", quantity=10.0,
-                         fill_price=182.50, timestamp=TS)
+        return FillEvent(
+            event_type="execution.fill",
+            order_id="o1",
+            symbol="AAPL",
+            action="BUY",
+            quantity=10.0,
+            fill_price=182.50,
+            timestamp=TS,
+        )
 
     def test_record_creates_entry(self, journal: TradeJournal) -> None:
         fill = self._make_fill()
@@ -391,12 +482,19 @@ class TestTradeJournal:
 # Layer 6: MetricsEngine
 # ---------------------------------------------------------------------------
 
+
 class TestMetricsEngine:
 
     def _make_fill(self, action: str, price: float, qty: float = 10.0) -> FillEvent:
-        return FillEvent(event_type="execution.fill", order_id="o1",
-                         symbol="AAPL", action=action,  # type: ignore[arg-type]
-                         quantity=qty, fill_price=price, timestamp=TS)
+        return FillEvent(
+            event_type="execution.fill",
+            order_id="o1",
+            symbol="AAPL",
+            action=action,  # type: ignore[arg-type]
+            quantity=qty,
+            fill_price=price,
+            timestamp=TS,
+        )
 
     def test_compute_empty_returns_zero_metrics(self, metrics: MetricsEngine) -> None:
         m = metrics.compute()
@@ -448,13 +546,21 @@ class TestMetricsEngine:
     def test_to_dict_has_all_keys(self, metrics: MetricsEngine) -> None:
         m = metrics.compute()
         d = m.to_dict()
-        for key in ["total_trades", "total_pnl", "total_return", "sharpe_ratio", "max_drawdown", "win_rate"]:
+        for key in [
+            "total_trades",
+            "total_pnl",
+            "total_return",
+            "sharpe_ratio",
+            "max_drawdown",
+            "win_rate",
+        ]:
             assert key in d
 
 
 # ---------------------------------------------------------------------------
 # Layer 7: LiveView
 # ---------------------------------------------------------------------------
+
 
 class TestLiveView:
 
@@ -510,6 +616,7 @@ class TestLiveView:
 # Full end-to-end pipeline test
 # ---------------------------------------------------------------------------
 
+
 class TestFullEndToEndPipeline:
 
     def test_full_pipeline_buy_flow(self) -> None:
@@ -525,7 +632,9 @@ class TestFullEndToEndPipeline:
 
         portfolio = Portfolio(initial_cash=INITIAL_CASH)
         tracker = PortfolioTracker(portfolio)
-        risk = RiskEngine(price_feed=PRICE_FEED, max_position_pct=0.10, min_confidence=0.60)
+        risk = RiskEngine(
+            price_feed=PRICE_FEED, max_position_pct=0.10, min_confidence=0.60
+        )
         om = OrderManager(price_feed=PRICE_FEED, bus=bus)
         journal = TradeJournal()
         metrics = MetricsEngine(initial_capital=INITIAL_CASH)
@@ -583,7 +692,9 @@ class TestFullEndToEndPipeline:
         bus = EventBus()
         portfolio = Portfolio(initial_cash=INITIAL_CASH)
         tracker = PortfolioTracker(portfolio)
-        risk = RiskEngine(price_feed=PRICE_FEED, max_position_pct=0.10, min_confidence=0.60)
+        risk = RiskEngine(
+            price_feed=PRICE_FEED, max_position_pct=0.10, min_confidence=0.60
+        )
         om = OrderManager(price_feed=PRICE_FEED, bus=bus)
         metrics = MetricsEngine(initial_capital=INITIAL_CASH)
         journal = TradeJournal()
@@ -591,6 +702,7 @@ class TestFullEndToEndPipeline:
         # BUY
         buy_decision = make_decision_event("AAPL", "BUY", confidence=0.85)
         buy_order = risk.approve(buy_decision, portfolio)
+        assert buy_order is not None
         buy_fill = om.execute(buy_order)
         tracker.apply_fill(buy_fill)
         metrics.record_fill(buy_fill, entry_price=PRICE_FEED["AAPL"])
@@ -599,10 +711,10 @@ class TestFullEndToEndPipeline:
         # SELL at higher price
         sell_price_feed = {"AAPL": 200.0}
         sell_om = OrderManager(price_feed=sell_price_feed, bus=bus)
-        sell_risk = RiskEngine(price_feed=sell_price_feed, max_position_pct=0.10, min_confidence=0.60)
         sell_decision = make_decision_event("AAPL", "SELL", confidence=0.80)
         sell_order = Order(
-            symbol="AAPL", action="SELL",
+            symbol="AAPL",
+            action="SELL",
             quantity=buy_order.quantity,
             order_type="MARKET",
             strategy_id="test",

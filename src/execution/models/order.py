@@ -40,9 +40,7 @@ class Order:
     strategy_id: str
     order_id: str = field(default_factory=lambda: str(uuid4()))
     limit_price: float | None = None
-    timestamp: datetime = field(
-        default_factory=lambda: datetime.now(timezone.utc)
-    )
+    timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
 
     _VALID_ACTIONS: ClassVar[frozenset[str]] = frozenset({"BUY", "SELL"})
     _VALID_ORDER_TYPES: ClassVar[frozenset[str]] = frozenset({"MARKET", "LIMIT"})
@@ -56,7 +54,7 @@ class Order:
         if self.quantity < self._MIN_QUANTITY:
             raise ValueError(f"quantity must be >= {self._MIN_QUANTITY}.")
         if self.order_type not in self._VALID_ORDER_TYPES:
-            raise ValueError(f"order_type must be MARKET or LIMIT.")
+            raise ValueError("order_type must be MARKET or LIMIT.")
         if self.order_type == "LIMIT" and (
             self.limit_price is None or self.limit_price <= 0
         ):

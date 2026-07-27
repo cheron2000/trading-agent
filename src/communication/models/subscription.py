@@ -82,33 +82,23 @@ class Subscription:
             raise ValueError("subscriber_id must not be empty.")
 
         if len(value) > self._MAX_ID_LENGTH:
-            raise ValueError(
-                "subscriber_id exceeds maximum length."
-            )
+            raise ValueError("subscriber_id exceeds maximum length.")
 
     def _validate_event_pattern(self) -> None:
         """Validate event_pattern."""
         pattern = self.event_pattern.strip()
 
         if not pattern:
-            raise ValueError(
-                "event_pattern must not be empty."
-            )
+            raise ValueError("event_pattern must not be empty.")
 
         if len(pattern) > self._MAX_PATTERN_LENGTH:
-            raise ValueError(
-                "event_pattern exceeds maximum length."
-            )
+            raise ValueError("event_pattern exceeds maximum length.")
 
         if " " in pattern:
-            raise ValueError(
-                "event_pattern must not contain whitespace."
-            )
+            raise ValueError("event_pattern must not contain whitespace.")
 
         if ".." in pattern:
-            raise ValueError(
-                "event_pattern contains invalid separators."
-            )
+            raise ValueError("event_pattern contains invalid separators.")
 
     def _validate_filter_expression(self) -> None:
         """Validate the optional filter expression."""
@@ -116,9 +106,7 @@ class Subscription:
             return
 
         if not self.filter_expression.strip():
-            raise ValueError(
-                "filter_expression cannot be empty."
-            )
+            raise ValueError("filter_expression cannot be empty.")
 
     @property
     def is_enabled(self) -> bool:
