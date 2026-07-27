@@ -87,7 +87,14 @@ _rl.set_limit("execution", rate=100.0, capacity=200.0)
 bus = EventBus(rate_limiter=_rl)
 
 # --- L3 Data ---
-provider = YFinanceProvider(symbols=SYMBOLS, ttl_seconds=55.0, use_tor=False)
+# Try fixture provider first (instant, no network) then fall back to live yfinance
+from data.providers.market_provider import MarketDataProvider
+try:
+    provider = MarketDataProvider()  # Loads from data_store/fixtures/market_ticks.json
+    print(f"[OK] Using fixture data provider (instant)\n")
+except FileNotFoundError:
+    print(f"[WARN] Fixture not found, using live YFinanceProvider...\n")
+    provider = YFinanceProvider(symbols=SYMBOLS, ttl_seconds=55.0, use_tor=False)
 engineer = FeatureEngineer(window_size=5)
 
 # --- L4 Intelligence ---

@@ -98,6 +98,45 @@ class MarketDataProvider:
         self._indices[key] = (idx + 1) % len(ticks)
         return tick
 
+    def warm_cache(self, symbols: list[str] | None = None) -> None:
+        """Warm cache — no-op for fixture provider.
+
+        Fixture data is already loaded in memory, so caching is
+        unnecessary. This method exists for compatibility with
+        YFinanceProvider, which uses it to pre-fetch data.
+
+        Args:
+            symbols: Ignored.
+        """
+        pass
+
+    def fetch_recent(self, symbol: str, n: int = 5) -> list[MarketTick]:
+        """Fetch recent ticks for a symbol.
+
+        For fixture provider, returns the next n ticks without advancing
+        the main fetch() index.
+
+        Args:
+            symbol: Canonical ticker symbol.
+            n: Number of recent ticks to return.
+
+        Returns:
+            List of immutable ``MarketTick`` objects.
+
+        Raises:
+            ValueError: If ``symbol`` is empty or not found.
+        """
+        if not symbol or not symbol.strip():
+            raise ValueError("symbol must not be empty.")
+
+        key = symbol.strip().upper()
+        if key not in self._tick_lists:
+            raise ValueError(
+                f"Symbol '{key}' not found in fixture '{self._fixture_path}'."
+            )
+        ticks = self._tick_lists[key]
+        return ticks[-n:] if len(ticks) >= n else ticks
+
     # ------------------------------------------------------------------
     # Internal helpers
     # ------------------------------------------------------------------
