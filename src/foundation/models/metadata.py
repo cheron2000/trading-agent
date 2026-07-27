@@ -12,7 +12,7 @@ Python: 3.13+
 from __future__ import annotations
 
 from collections.abc import Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from types import MappingProxyType
 
 from foundation.models.base_model import BaseModel
@@ -42,7 +42,7 @@ class Metadata(BaseModel):
     description: str | None = None
     owner: str | None = None
     tags: tuple[str, ...] = ()
-    attributes: Mapping[str, str] = MappingProxyType({})
+    attributes: Mapping[str, str] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         """Validate and normalize immutable collections."""
