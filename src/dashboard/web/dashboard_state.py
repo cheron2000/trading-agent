@@ -163,6 +163,8 @@ def set_running(running: bool, capital: float = 100_000.0, symbols: list[str] | 
             _cash = capital
             _portfolio_value = capital
             _started_at = datetime.now(timezone.utc)
+            _warnings.clear()
+            _decisions.clear()
 
 
 def set_stopped() -> None:

@@ -40,13 +40,26 @@ class FeatureEngineer:
     | volume_total          | Sum of all volumes                             |
     | high                  | Max price in window                            |
     | low                   | Min price in window                            |
+    | rsi                   | 14-period Relative Strength Index              |
+    | macd_line             | MACD line (12 EMA - 26 EMA)                    |
+    | macd_signal           | MACD signal line (9-period EMA approx)         |
+    | macd_histogram        | MACD line - MACD signal                        |
+    | bb_upper              | Bollinger Bands upper (20-period 2 std dev)    |
+    | bb_lower              | Bollinger Bands lower (20-period 2 std dev)    |
+    | bb_middle             | Bollinger Bands middle (20-period SMA)         |
+    | bb_position           | Position within Bollinger Bands (0.0 to 1.0)   |
+    | volume_ratio          | Latest volume / mean volume                    |
+    | sma_5                 | 5-period Simple Moving Average                 |
+    | sma_20                | 20-period Simple Moving Average                |
+    | atr                   | 14-period Average True Range                   |
+    | atr_pct               | ATR as a percentage of latest price            |
     +-----------------------+------------------------------------------------+
 
     ``source_quality`` is computed as ``min(len(ticks) / window_size, 1.0)``,
     so a partial window produces a quality score below 1.0.
     """
 
-    DEFAULT_WINDOW_SIZE: ClassVar[int] = 20
+    DEFAULT_WINDOW_SIZE: ClassVar[int] = 26
 
     def __init__(self, window_size: int = DEFAULT_WINDOW_SIZE) -> None:
         """
@@ -133,6 +146,58 @@ class FeatureEngineer:
         high = max(prices)
         low = min(prices)
 
+        # RSI-14
+        rsi = FeatureEngineer._compute_rsi(prices, period=14)
+
+        # MACD
+        macd_line = FeatureEngineer._ema(prices, 12) - FeatureEngineer._ema(prices, 26)
+        macd_signal = macd_line * (9.0 / (9.0 + 1.0)) if n >= 26 else 0.0
+        macd_histogram = macd_line - macd_signal
+
+        # Bollinger Bands
+        bb_window = prices[-20:] if n >= 20 else prices
+        bb_middle = statistics.mean(bb_window)
+        bb_std = statistics.pstdev(bb_window) if len(bb_window) >= 2 else 0.0
+        bb_upper = bb_middle + 2 * bb_std
+        bb_lower = bb_middle - 2 * bb_std
+        bb_position = (price_latest - bb_lower) / (bb_upper - bb_lower) if (bb_upper - bb_lower) > 0 else 0.5
+
+        # Volume Ratio
+        volume_ratio = volumes[-1] / volume_mean if volume_mean > 0 else 1.0
+
+        # SMAs
+        sma_5 = statistics.mean(prices[-5:]) if n >= 5 else price_latest
+        sma_20 = statistics.mean(prices[-20:]) if n >= 20 else price_latest
+
+        # ATR (14-period) and ATR ratio (5-period / 20-period ATR for volatility expansion detection)
+        atr = FeatureEngineer._compute_atr(prices, period=14)
+        atr_pct = (atr / price_latest * 100.0) if price_latest > 0 else 0.0
+        atr_5 = FeatureEngineer._compute_atr(prices, period=5)
+        atr_20 = FeatureEngineer._compute_atr(prices, period=20)
+        atr_ratio = (atr_5 / atr_20) if atr_20 > 0 else 1.0
+
+        # VWAP calculation
+        pv_sum = sum(p * v for p, v in zip(prices, volumes))
+        vwap = (pv_sum / volume_total) if volume_total > 0 else price_latest
+
+        # Market Regime Classification
+        # 1. Crisis: ATR ratio > 1.75
+        # 2. Volatile: ATR ratio > 1.25 or volume_ratio > 1.8
+        # 3. Ranging: Price oscillates near VWAP, BB width narrow, RSI between 35-65
+        # 4. Trending: Price riding one side of VWAP with directional MACD
+        if atr_ratio >= 1.75:
+            regime_label = "crisis"
+            regime_confidence = 0.90
+        elif atr_ratio >= 1.25 or volume_ratio > 1.8:
+            regime_label = "volatile"
+            regime_confidence = 0.85
+        elif (abs(price_latest - vwap) / vwap < 0.01) and (35 <= rsi <= 65) and ((bb_upper - bb_lower) / bb_middle < 0.04 if bb_middle > 0 else True):
+            regime_label = "ranging"
+            regime_confidence = 0.80
+        else:
+            regime_label = "trending"
+            regime_confidence = 0.85
+
         return {
             "price_latest": price_latest,
             "price_mean": price_mean,
@@ -142,7 +207,61 @@ class FeatureEngineer:
             "volume_total": volume_total,
             "high": high,
             "low": low,
+            "rsi": rsi,
+            "macd_line": macd_line,
+            "macd_signal": macd_signal,
+            "macd_histogram": macd_histogram,
+            "bb_upper": bb_upper,
+            "bb_lower": bb_lower,
+            "bb_middle": bb_middle,
+            "bb_position": bb_position,
+            "volume_ratio": volume_ratio,
+            "sma_5": sma_5,
+            "sma_20": sma_20,
+            "atr": atr,
+            "atr_pct": atr_pct,
+            "atr_ratio": atr_ratio,
+            "vwap": vwap,
+            "regime_label": regime_label,
+            "regime_confidence": regime_confidence,
         }
+
+    @staticmethod
+    def _compute_atr(prices: list[float], period: int = 14) -> float:
+        """Compute Average True Range (ATR) as a volatility measure.
+        
+        For simplicity with single price series (no OHLC), True Range is
+        approximated as abs(prices[i] - prices[i-1]).
+        """
+        if len(prices) < 2:
+            return 0.0
+        true_ranges = [abs(prices[i] - prices[i-1]) for i in range(1, len(prices))]
+        recent = true_ranges[-period:] if len(true_ranges) >= period else true_ranges
+        return sum(recent) / len(recent) if recent else 0.0
+
+    @staticmethod
+    def _compute_rsi(prices: list[float], period: int = 14) -> float:
+        if len(prices) < period + 1:
+            return 50.0
+        changes = [prices[i] - prices[i-1] for i in range(1, len(prices))]
+        gains = [max(c, 0.0) for c in changes[-period:]]
+        losses = [abs(min(c, 0.0)) for c in changes[-period:]]
+        avg_gain = sum(gains) / period
+        avg_loss = sum(losses) / period
+        if avg_loss == 0:
+            return 100.0
+        rs = avg_gain / avg_loss
+        return 100.0 - (100.0 / (1.0 + rs))
+
+    @staticmethod
+    def _ema(prices: list[float], period: int) -> float:
+        if not prices:
+            return 0.0
+        k = 2.0 / (period + 1)
+        ema = prices[0]
+        for p in prices[1:]:
+            ema = p * k + ema * (1 - k)
+        return ema
 
     # ------------------------------------------------------------------
     # Properties

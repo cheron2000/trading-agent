@@ -123,7 +123,7 @@ def create_app(state: DashboardState | None = None) -> Flask:
         """Switch the active strategy mode."""
         body = request.get_json(silent=True) or {}
         mode = body.get("mode", "SIMPLE-RULE")
-        if mode not in ("GROQ-LLM", "SIMPLE-RULE"):
+        if mode not in ("ATLAS", "GROQ-LLM", "SIMPLE-RULE", "OLLAMA"):
             return jsonify({"status": "error", "message": f"Unknown mode: {mode}"}), 400
         _ds.set_strategy_mode(mode)
         return jsonify({"status": "success", "strategy_mode": mode})

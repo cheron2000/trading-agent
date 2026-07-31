@@ -8,18 +8,18 @@ Implement two new components — `TelegramNotifier` (L7 Dashboard) and `AlpacaOr
 
 ## Tasks
 
-- [ ] 1. Extend credentials infrastructure and add PortfolioStateEvent
+- [x] 1. Extend credentials infrastructure and add PortfolioStateEvent
 
-  - [-] 1.1 Add `load_telegram_keys` and `load_alpaca_keys` to `load_keys.py`
+  - [x] 1.1 Add `load_telegram_keys` and `load_alpaca_keys` to `load_keys.py`
     - Implement `load_telegram_keys(path) -> tuple[str, str]` that reads `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID` from `keys.env`; raise `FileNotFoundError` if the file is missing, `ValueError` if either key is absent or empty
     - Implement `load_alpaca_keys(path) -> tuple[str, str]` that reads `ALPACA_API_KEY` and `ALPACA_SECRET_KEY` from `keys.env` with the same error semantics
     - _Requirements: 7.4, 7.5, 7.6, 5.1_
 
-  - [-] 1.2 Add Telegram and Alpaca credential stubs to `keys.env`
+  - [x] 1.2 Add Telegram and Alpaca credential stubs to `keys.env`
     - Append the `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`, `ALPACA_API_KEY`, and `ALPACA_SECRET_KEY` keys (with empty values and explanatory comments) to `keys.env`
     - _Requirements: 7.4, 5.1_
 
-  - [-] 1.3 Create `src/communication/events/portfolio_state_event.py`
+  - [x] 1.3 Create `src/communication/events/portfolio_state_event.py`
     - Define the frozen dataclass `PortfolioStateEvent(BaseEvent)` with fields: `event_type="portfolio.state"`, `portfolio_value`, `cash`, `realized_pnl`, `total_return_pct`, `positions: tuple[dict, ...]`
     - Add `__init__.py` updates so the event is importable from `communication.events`
     - _Requirements: 5.2, 4.1, 4.2, 4.3_
@@ -31,15 +31,15 @@ Implement two new components — `TelegramNotifier` (L7 Dashboard) and `AlpacaOr
     - Test happy path returns correct tuple
     - _Requirements: 7.5, 7.6_
 
-- [ ] 2. Implement AlpacaOrderManager
+- [x] 2. Implement AlpacaOrderManager
 
-  - [~] 2.1 Create package skeleton `src/execution/broker/`
+  - [x] 2.1 Create package skeleton `src/execution/broker/`
     - Create `src/execution/broker/__init__.py`
     - Create stub `src/execution/broker/alpaca_order_manager.py` with class signature, docstring, and all method stubs raising `NotImplementedError`
     - Pin `alpaca-py` exact version in `requirements.txt`
     - _Requirements: 6.1, 11.2, 11.4_
 
-  - [~] 2.2 Implement `AlpacaOrderManager.__init__` with live-trading gate and credential validation
+  - [x] 2.2 Implement `AlpacaOrderManager.__init__` with live-trading gate and credential validation
     - Load `api_key` / `secret_key` via constructor params (caller uses `load_alpaca_keys`)
     - Raise `ValueError` if `live_trading=True` and `paper_validation_complete` is not `True`, with the exact required message
     - Instantiate `TradingClient` with `paper=True` or `paper=False` based on `live_trading`
@@ -54,7 +54,7 @@ Implement two new components — `TelegramNotifier` (L7 Dashboard) and `AlpacaOr
     - Live mode → `TradingClient` called with `paper=False`, WARNING log
     - _Requirements: 8.2, 8.3, 12.2_
 
-  - [~] 2.4 Implement `_check_capital_limit`, `_check_drawdown_limit`, and `_update_peak`
+  - [x] 2.4 Implement `_check_capital_limit`, `_check_drawdown_limit`, and `_update_peak`
     - `_check_capital_limit(order, current_price)`: reject if `quantity × current_price > 0.02 × portfolio_value`; log WARNING with symbol, notional, and limit; raise `ValueError`
     - `_check_drawdown_limit()`: reject if `(peak - current) / peak > 0.10`; log WARNING; publish `risk.drawdown_breach` event; raise `ValueError`
     - `_update_peak(current_value)`: update `self._peak_portfolio_value` if `current_value` exceeds it
@@ -72,7 +72,7 @@ Implement two new components — `TelegramNotifier` (L7 Dashboard) and `AlpacaOr
     - Use `hypothesis` `st.lists(st.floats(min_value=1.0), min_size=2)` to generate portfolio value sequences; feed them as `get_portfolio_value()` mock returns; assert peak equals running maximum and orders rejected when drawdown > 10%
     - _Test file: `src/execution/broker/tests/test_alpaca_order_manager_props.py`_
 
-  - [~] 2.7 Implement `AlpacaOrderManager.execute`
+  - [x] 2.7 Implement `AlpacaOrderManager.execute`
     - Call `_check_drawdown_limit()` then `_check_capital_limit(order, current_price)`
     - Submit market order via `alpaca_client.submit_order()`; await fill via `alpaca_client.get_order_by_id()` polling or websocket; raise `RuntimeError("Alpaca fill timeout for order {order_id}")` on timeout
     - On API error, raise `RuntimeError(f"Alpaca API error: {message}")` without publishing a `FillEvent`
@@ -90,7 +90,7 @@ Implement two new components — `TelegramNotifier` (L7 Dashboard) and `AlpacaOr
     - Fill timeout → `RuntimeError`
     - _Requirements: 6.4_
 
-  - [~] 2.10 Implement `get_positions` and `get_portfolio_value`
+  - [x] 2.10 Implement `get_positions` and `get_portfolio_value`
     - `get_positions()`: call `alpaca_client.get_all_positions()`; map each position to `{"symbol": ..., "quantity": ..., "market_value": ...}`; return empty list when API returns no positions; raise `RuntimeError` on API error
     - `get_portfolio_value()`: call `alpaca_client.get_account()`; return `float(account.equity)`; raise `RuntimeError` on API error
     - _Requirements: 10.1, 10.2, 10.3, 10.4_
@@ -101,18 +101,18 @@ Implement two new components — `TelegramNotifier` (L7 Dashboard) and `AlpacaOr
     - Use `st.lists(st.fixed_dictionaries(...))` of mock Alpaca position objects; assert every returned dict contains exactly `"symbol"`, `"quantity"`, `"market_value"` keys
     - _Test file: `src/execution/broker/tests/test_alpaca_order_manager_props.py`_
 
-- [~] 3. Checkpoint — AlpacaOrderManager complete
+- [x] 3. Checkpoint — AlpacaOrderManager complete
   - Ensure all AlpacaOrderManager tests pass. Run `python -m pytest src/execution/broker/tests/ -v`. Ask the user if any questions arise before proceeding.
 
-- [ ] 4. Implement TelegramNotifier
+- [x] 4. Implement TelegramNotifier
 
-  - [~] 4.1 Create package skeleton `src/dashboard/telegram/`
+  - [x] 4.1 Create package skeleton `src/dashboard/telegram/`
     - Create `src/dashboard/telegram/__init__.py`
     - Create stub `src/dashboard/telegram/telegram_notifier.py` with class signature and all method stubs
     - Pin `python-telegram-bot>=20.0` exact version in `requirements.txt`
     - _Requirements: 5.6, 11.1, 11.5_
 
-  - [~] 4.2 Implement `TelegramNotifier.__init__`, `start`, and `stop`
+  - [x] 4.2 Implement `TelegramNotifier.__init__`, `start`, and `stop`
     - Validate `bot_token` and `chat_id` at construction; raise `ValueError("bot_token must not be empty.")` / `ValueError("chat_id must not be empty.")` on empty/whitespace
     - `start()`: subscribe to `"execution.fill"`, `"intelligence.decision"`, `"session.end"`, `"portfolio.state"`; build `Application`; spin up daemon thread with dedicated asyncio loop running `application.run_polling()`
     - `stop()`: stop polling, stop the event loop, join the thread, unsubscribe all four patterns
@@ -131,7 +131,7 @@ Implement two new components — `TelegramNotifier` (L7 Dashboard) and `AlpacaOr
     - `stop()` unregisters all subscriptions
     - _Requirements: 5.4, 5.5_
 
-  - [~] 4.5 Implement message formatter methods
+  - [x] 4.5 Implement message formatter methods
     - `_format_fill_message(event, realized_pnl)`: BUY path includes symbol, qty (4dp), price (2dp), UTC timestamp; SELL path additionally includes realized P&L (2dp with sign)
     - `_format_decision_message(event)`: symbol, action, confidence (2dp), rationale truncated to first 200 chars
     - `_format_session_summary(event)`: total P&L (2dp with sign), win rate (1dp%), total trades (int), Sharpe (4dp), max drawdown (4dp%); if `total_trades==0`, format "no trades" message with portfolio value (2dp)
@@ -186,7 +186,7 @@ Implement two new components — `TelegramNotifier` (L7 Dashboard) and `AlpacaOr
     - `st.lists(st.fixed_dictionaries({"symbol": st.text(), "quantity": st.floats(), "entry_price": st.floats()}), max_size=20)`; assert one line per position or exact "No open positions." string
     - _Test file: `src/dashboard/telegram/tests/test_telegram_notifier_props.py`_
 
-  - [~] 4.14 Implement EventBus handlers and `_safe_send`
+  - [x] 4.14 Implement EventBus handlers and `_safe_send`
     - `_on_fill(event)`: format message via `_format_fill_message()`; schedule `_safe_send()` via `asyncio.run_coroutine_threadsafe()`
     - `_on_decision(event)`: respect `notify_hold` flag; format via `_format_decision_message()`; schedule send
     - `_on_session_end(event)`: format via `_format_session_summary()`; schedule send
@@ -194,7 +194,7 @@ Implement two new components — `TelegramNotifier` (L7 Dashboard) and `AlpacaOr
     - `_safe_send(text)`: `await bot.send_message()`; on `TelegramError` or network error call `self._log.warning(...)`; if logger itself raises, re-raise
     - _Requirements: 1.1, 1.2, 1.3, 2.1, 2.2, 2.3, 3.1, 3.2, 3.3, 3.4_
 
-  - [~] 4.15 Implement Telegram command handlers
+  - [x] 4.15 Implement Telegram command handlers
     - `_cmd_status`: reply with `_format_status_reply()` within 5 seconds
     - `_cmd_positions`: reply with `_format_positions_reply()`; reply "No open positions." when list empty
     - `_cmd_pnl`: reply with `_format_pnl_reply()`
@@ -208,50 +208,50 @@ Implement two new components — `TelegramNotifier` (L7 Dashboard) and `AlpacaOr
     - Unknown command → help text contains all four command names
     - _Requirements: 1.3, 2.3, 3.4, 4.4, 4.6_
 
-- [~] 5. Checkpoint — TelegramNotifier complete
+- [x] 5. Checkpoint — TelegramNotifier complete
   - Ensure all TelegramNotifier tests pass. Run `python -m pytest src/dashboard/telegram/tests/ -v`. Ask the user if any questions arise before proceeding.
 
-- [ ] 6. Wire components into run_hour.py
+- [x] 6. Wire components into run_hour.py
 
-  - [~] 6.1 Add `--telegram` flag: conditional import and `TelegramNotifier` construction
+  - [x] 6.1 Add `--telegram` flag: conditional import and `TelegramNotifier` construction
     - After existing imports, add optional block guarded by `"--telegram" in sys.argv`; call `load_telegram_keys()`; construct `TelegramNotifier`; handle `FileNotFoundError`/`ValueError` with a WARNING print (not a crash)
     - _Requirements: 5.1, 5.2, 11.1_
 
-  - [~] 6.2 Add `--alpaca` flag: conditional import and `AlpacaOrderManager` construction
+  - [x] 6.2 Add `--alpaca` flag: conditional import and `AlpacaOrderManager` construction
     - Add optional block guarded by `"--alpaca" in sys.argv`; call `load_alpaca_keys()`; construct `AlpacaOrderManager` with `live_trading=False`; fall back to existing `OrderManager` when flag absent
     - _Requirements: 6.1, 7.1, 7.2, 11.2_
 
-  - [~] 6.3 Start `TelegramNotifier` before the trading loop and stop it after
+  - [x] 6.3 Start `TelegramNotifier` before the trading loop and stop it after
     - Call `_telegram_notifier.start()` after all components are wired; call `_telegram_notifier.stop()` after the session-end event is published
     - _Requirements: 5.2, 5.3_
 
-  - [~] 6.4 Publish `PortfolioStateEvent` at the end of each cycle
+  - [x] 6.4 Publish `PortfolioStateEvent` at the end of each cycle
     - After all symbols are processed each cycle, compute `portfolio_value`, `cash`, `positions`, `realized_pnl`, and `total_return_pct`; publish `PortfolioStateEvent` on the EventBus
     - _Requirements: 4.1, 4.2, 4.3_
 
-  - [~] 6.5 Publish `session.end` event and subscribe `system.shutdown_requested`
+  - [x] 6.5 Publish `session.end` event and subscribe `system.shutdown_requested`
     - After the trading loop ends, publish `BaseEvent(event_type="session.end", payload={...})` with all six required fields
     - Add `_on_shutdown_requested` handler subscribed to `"system.shutdown_requested"` that sets the `shutdown` flag
     - _Requirements: 2.1, 4.4_
 
-  - [~] 6.6 Unify order execution dispatch via `_exec` variable
+  - [x] 6.6 Unify order execution dispatch via `_exec` variable
     - Replace both `order_manager.execute(order)` call sites with `_exec.execute(order)` where `_exec = alpaca_order_manager if _use_alpaca else order_manager`
     - _Requirements: 6.1_
 
-- [ ] 7. Architecture compliance and dependency pinning
+- [x] 7. Architecture compliance and dependency pinning
 
-  - [~] 7.1 Verify `scripts/architecture_lint.py` passes with both new components
+  - [x] 7.1 Verify `scripts/architecture_lint.py` passes with both new components
     - Run `python scripts/architecture_lint.py` and confirm zero violations for `TelegramNotifier` and `AlpacaOrderManager`
     - Fix any accidental cross-layer import if the linter reports one
     - _Requirements: 11.1, 11.2, 11.3_
 
-  - [~] 7.2 Pin library versions in `requirements.txt`
+  - [x] 7.2 Pin library versions in `requirements.txt`
     - Add `python-telegram-bot==<latest stable ≥20.0>` with exact pin
     - Add `alpaca-py==<latest stable>` with exact pin
     - Confirm `hypothesis` is present in `requirements-dev.txt` (add if missing)
     - _Requirements: 11.4, 11.5_
 
-- [~] 8. Final checkpoint — all tests pass
+- [x] 8. Final checkpoint — all tests pass
   - Run the full test suite: `python -m pytest src/ -v`. Ensure all tests pass, architecture lint is clean, and no cross-layer imports exist. Ask the user if any questions arise.
 
 ---

@@ -348,9 +348,16 @@ class YFinanceProvider:
             if df is None or df.empty:
                 return
 
+            import pandas as pd
+            if isinstance(df.columns, pd.MultiIndex):
+                df.columns = df.columns.get_level_values(0)
+
             last = df.iloc[-1]
-            price = float(last["Close"])
-            volume = float(last.get("Volume", 0.0))
+            close_col = [c for c in df.columns if str(c).lower() == 'close']
+            vol_col = [c for c in df.columns if str(c).lower() == 'volume']
+
+            price = float(last[close_col[0]]) if close_col else float(last.iloc[0])
+            volume = float(last[vol_col[0]]) if vol_col else 0.0
 
             raw_ts = df.index[-1]
             try:
@@ -369,11 +376,13 @@ class YFinanceProvider:
                     row_ts = row.name.to_pydatetime()
                     if row_ts.tzinfo is None:
                         row_ts = row_ts.replace(tzinfo=timezone.utc)
+                    r_price = float(row[close_col[0]]) if close_col else float(row.iloc[0])
+                    r_vol = float(row[vol_col[0]]) if vol_col else 0.0
                     recent.append(
                         MarketTick(
                             symbol=symbol,
-                            price=float(row["Close"]),
-                            volume=float(row.get("Volume", 0.0)),
+                            price=r_price,
+                            volume=r_vol,
                             timestamp=row_ts,
                             source=self.SOURCE_NAME,
                         )

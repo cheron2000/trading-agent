@@ -42,15 +42,22 @@ _GROQ_API_URL  = "https://api.groq.com/openai/v1/chat/completions"
 class GroqClient:
     """Groq inference API client implementing ILLMClient protocol.
 
+    Supports API key rotation to bypass rate limits when multiple keys provided.
+
     Usage::
 
+        # Single key (backward compatible)
         client = GroqClient(api_key="your_groq_key")
+        
+        # Multiple keys (auto-rotation on 429)
+        client = GroqClient(api_key=["key1", "key2", "key3"])
+        
         response = client.complete("Analyze this market data...")
     """
 
     def __init__(
         self,
-        api_key: str,
+        api_key: str | list[str],
         model: str = _DEFAULT_MODEL,
         temperature: float = 0.1,
         max_tokens: int = 256,
@@ -58,7 +65,8 @@ class GroqClient:
     ) -> None:
         """
         Args:
-            api_key:     Groq API key from console.groq.com.
+            api_key:     Groq API key(s). Pass a single string or list of strings.
+                         When multiple keys provided, rotates on 429 rate limit.
             model:       Model alias — one of: llama3-8b, llama3-70b, mixtral.
                          Or pass a full model ID directly.
             temperature: Sampling temperature (0.0 = deterministic).
@@ -67,22 +75,59 @@ class GroqClient:
             timeout:     HTTP timeout in seconds.
 
         Raises:
-            ValueError: If api_key is empty.
+            ValueError: If api_key is empty or contains no valid keys.
         """
-        if not api_key or not api_key.strip():
+        # Normalize to list
+        if isinstance(api_key, str):
+            keys = [api_key.strip()]
+        else:
+            keys = [k.strip() for k in api_key if k and k.strip()]
+        
+        if not keys:
             raise ValueError("api_key must not be empty.")
 
-        self._api_key = api_key.strip()
+        self._api_keys = keys
+        self._current_key_index = 0
         self._model = GROQ_MODELS.get(model, model)  # resolve alias or use as-is
         self._temperature = temperature
         self._max_tokens = max_tokens
         self._timeout = timeout
 
-        _log.info("GroqClient initialized — model: %s", self._model)
+        _log.info(
+            "GroqClient initialized — model: %s, keys: %d",
+            self._model, len(self._api_keys)
+        )
 
     # ------------------------------------------------------------------
     # ILLMClient protocol
     # ------------------------------------------------------------------
+
+    @property
+    def _api_key(self) -> str:
+        """Get the current API key (for backward compatibility and rotation)."""
+        return self._api_keys[self._current_key_index]
+
+    def _rotate_key(self) -> bool:
+        """Rotate to the next API key.
+        
+        Returns:
+            True if rotated to a new key, False if all keys exhausted.
+        """
+        if len(self._api_keys) <= 1:
+            return False
+        
+        old_index = self._current_key_index
+        self._current_key_index = (self._current_key_index + 1) % len(self._api_keys)
+        
+        # Check if we've cycled through all keys
+        if self._current_key_index != old_index:
+            _log.info(
+                "Rotated to API key %d/%d",
+                self._current_key_index + 1,
+                len(self._api_keys)
+            )
+            return True
+        return False
 
     def complete(self, prompt: str) -> str:
         """Send a prompt to Groq and return the model's text response.
@@ -119,19 +164,25 @@ class GroqClient:
         }
 
         body = json.dumps(payload).encode("utf-8")
-        req = Request(
-            _GROQ_API_URL,
-            data=body,
-            headers={
-                "Content-Type": "application/json",
-                "Authorization": f"Bearer {self._api_key}",
-                "User-Agent": "python-httpx/0.27.0",
-                "Accept": "application/json",
-            },
-            method="POST",
-        )
-
+        
+        # Track keys tried to avoid infinite loops
+        keys_tried = 0
+        max_keys_to_try = len(self._api_keys)
+        
         for attempt in range(3):
+            # Build request with current key
+            req = Request(
+                _GROQ_API_URL,
+                data=body,
+                headers={
+                    "Content-Type": "application/json",
+                    "Authorization": f"Bearer {self._api_key}",
+                    "User-Agent": "python-httpx/0.27.0",
+                    "Accept": "application/json",
+                },
+                method="POST",
+            )
+            
             try:
                 # Use a direct opener that bypasses any system proxy (Tor)
                 direct_opener = urllib.request.build_opener(
@@ -145,9 +196,21 @@ class GroqClient:
 
             except HTTPError as exc:
                 if exc.code == 429:
+                    # Try rotating to next key first
+                    if keys_tried < max_keys_to_try and self._rotate_key():
+                        keys_tried += 1
+                        _log.info(
+                            "Rate limit hit — trying key %d/%d (attempt %d/3)",
+                            self._current_key_index + 1,
+                            len(self._api_keys),
+                            attempt + 1
+                        )
+                        continue  # Retry immediately with new key
+                    
+                    # All keys exhausted, wait and retry
                     wait = 2.0 ** attempt * 10  # 10s, 20s, 40s
                     _log.warning(
-                        "Groq rate limit (429) — waiting %.0fs (attempt %d/3)",
+                        "Groq rate limit (429) on all keys — waiting %.0fs (attempt %d/3)",
                         wait, attempt + 1,
                     )
                     time.sleep(wait)

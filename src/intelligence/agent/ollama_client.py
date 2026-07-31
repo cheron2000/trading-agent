@@ -98,6 +98,7 @@ class OllamaClient:
                     "model": self._model,
                     "prompt": prompt,
                     "stream": False,
+                    "format": "json",
                     "options": {"temperature": self._temperature},
                 },
                 timeout=self._timeout,

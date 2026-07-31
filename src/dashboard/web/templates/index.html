@@ -427,6 +427,8 @@
       </button>
 
       <select id="strategy-selector" class="select-sm" onchange="changeStrategy(this.value)">
+        <option value="ATLAS" selected>ATLAS Tactical Strategy</option>
+        <option value="OLLAMA">Ollama Local LLM</option>
         <option value="GROQ-LLM">Groq LLM Strategy</option>
         <option value="SIMPLE-RULE">Rule-Based Strategy</option>
       </select>
@@ -628,57 +630,64 @@
   </div>
 
   <script>
-    // Initialize Lucide icons
-    lucide.createIcons();
+    // Initialize Lucide icons (CDN may fail if Tor is routing traffic)
+    try { lucide.createIcons(); } catch(e) { console.warn('Lucide icons not loaded (CDN blocked?)', e); }
 
     const $ = id => document.getElementById(id);
     let allTrades = [];
     let evtSource = null;
 
-    // Chart.js Setup
-    const ctx = $('equityChart').getContext('2d');
-    const equityChart = new Chart(ctx, {
-      type: 'line',
-      data: {
-        labels: [],
-        datasets: [{
-          label: 'Portfolio Value ($)',
-          data: [],
-          borderColor: '#06b6d4',
-          backgroundColor: 'rgba(6, 182, 212, 0.1)',
-          borderWidth: 2,
-          fill: true,
-          tension: 0.3,
-          pointRadius: 3,
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: { display: false },
-          tooltip: {
-            mode: 'index',
-            intersect: false,
-            backgroundColor: 'rgba(15, 23, 42, 0.9)',
-            titleColor: '#f3f4f6',
-            bodyColor: '#06b6d4',
-            borderColor: 'rgba(255,255,255,0.1)',
-            borderWidth: 1
-          }
+    // Chart.js Setup — gracefully handle CDN failure
+    let equityChart = null;
+    try {
+      const ctx = $('equityChart').getContext('2d');
+      equityChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: [],
+          datasets: [{
+            label: 'Portfolio Value ($)',
+            data: [],
+            borderColor: '#06b6d4',
+            backgroundColor: 'rgba(6, 182, 212, 0.1)',
+            borderWidth: 2,
+            fill: true,
+            tension: 0.3,
+            pointRadius: 3,
+          }]
         },
-        scales: {
-          x: {
-            grid: { color: 'rgba(255, 255, 255, 0.05)' },
-            ticks: { color: '#9ca3af', font: { size: 11 } }
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              mode: 'index',
+              intersect: false,
+              backgroundColor: 'rgba(15, 23, 42, 0.9)',
+              titleColor: '#f3f4f6',
+              bodyColor: '#06b6d4',
+              borderColor: 'rgba(255,255,255,0.1)',
+              borderWidth: 1
+            }
           },
-          y: {
-            grid: { color: 'rgba(255, 255, 255, 0.05)' },
-            ticks: { color: '#9ca3af', font: { size: 11 } }
+          scales: {
+            x: {
+              grid: { color: 'rgba(255, 255, 255, 0.05)' },
+              ticks: { color: '#9ca3af', font: { size: 11 } }
+            },
+            y: {
+              grid: { color: 'rgba(255, 255, 255, 0.05)' },
+              ticks: { color: '#9ca3af', font: { size: 11 } }
+            }
           }
         }
-      }
-    });
+      });
+    } catch(e) {
+      console.warn('Chart.js not loaded (CDN blocked?). Chart will be disabled.', e);
+      // Hide chart container if Chart.js failed
+      try { $('equityChart').parentElement.innerHTML = '<div class="empty-state">Chart unavailable (CDN blocked by proxy)</div>'; } catch(e2) {}
+    }
 
     // Formatting Helpers
     function fmtMoney(num) {
@@ -710,7 +719,14 @@
 
       // Metric Cards
       const pv = parseFloat(s.portfolio_value || 0);
+      const initCap = parseFloat(s.initial_capital || 200);
       $('m-pv').textContent = fmtMoney(pv);
+      if ($('m-pv-sub')) {
+        const unrealized = pv - (s.cash + (s.total_pnl || 0)); // market value diff
+        const unrlzPnl = pv - initCap;
+        const unrlzSign = unrlzPnl >= 0 ? '+' : '';
+        $('m-pv-sub').innerHTML = `Start: $${initCap.toFixed(2)} | Total P&L: <span class="${unrlzPnl >= 0 ? 'val-pos' : 'val-neg'}">${unrlzSign}$${unrlzPnl.toFixed(2)}</span>`;
+      }
 
       const pnl = parseFloat(s.total_pnl || 0);
       $('m-pnl').innerHTML = fmtPnl(pnl);
@@ -734,7 +750,7 @@
       }
 
       // Chart Update
-      if (s.chart_history && s.chart_history.length > 0) {
+      if (equityChart && s.chart_history && s.chart_history.length > 0) {
         equityChart.data.labels = s.chart_history.map(p => p.ts || `Cycle ${p.cycle}`);
         equityChart.data.datasets[0].data = s.chart_history.map(p => p.portfolio_value);
         equityChart.update('none');
@@ -887,6 +903,8 @@
 
     fetchSnapshot();
     connectSSE();
+    // Guaranteed fallback: Poll /api/snapshot every 3 seconds
+    setInterval(fetchSnapshot, 3000);
   </script>
 </body>
 </html>

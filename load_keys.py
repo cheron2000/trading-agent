@@ -35,9 +35,9 @@ _AV_KEY_PATTERN = re.compile(
     r"^\s*AV_KEYS?\s*(?:_\d+)?\s*=\s*(.+?)\s*$",
     re.IGNORECASE,
 )
-# Matches GROQ_API_KEY
+# Matches GROQ_API_KEY or GROQ_API_KEYS or GROQ_API_KEY_<n>
 _GROQ_KEY_PATTERN = re.compile(
-    r"^\s*GROQ_API_KEY\s*=\s*(.+?)\s*$",
+    r"^\s*GROQ_API_KEYS?\s*(?:_\d+)?\s*=\s*(.+?)\s*$",
     re.IGNORECASE,
 )
 # Matches GROQ_MODEL
@@ -68,6 +68,16 @@ _ALPACA_API_KEY_PATTERN = re.compile(
 # Matches ALPACA_SECRET_KEY
 _ALPACA_SECRET_KEY_PATTERN = re.compile(
     r"^\s*ALPACA_SECRET_KEY\s*=\s*(.+?)\s*$",
+    re.IGNORECASE,
+)
+# Matches OLLAMA_MODEL
+_OLLAMA_MODEL_PATTERN = re.compile(
+    r"^\s*OLLAMA_MODEL\s*=\s*(.+?)\s*$",
+    re.IGNORECASE,
+)
+# Matches OLLAMA_HOST
+_OLLAMA_HOST_PATTERN = re.compile(
+    r"^\s*OLLAMA_HOST\s*=\s*(.+?)\s*$",
     re.IGNORECASE,
 )
 
@@ -111,37 +121,82 @@ def load_av_keys(path: str | Path = _DEFAULT_KEYS_FILE) -> list[str]:
 
 
 def load_groq_key(path: str | Path = _DEFAULT_KEYS_FILE) -> tuple[str | None, str]:
-    """Load Groq API key and model from keys.env.
+    """Load Groq API key and model from keys.env (backward compatible).
 
     Returns:
         Tuple of (api_key, model_name).
         api_key is None if not set or empty.
         model_name defaults to 'llama3-8b'.
+    
+    Note: For multiple keys, use load_groq_keys() instead.
+    """
+    keys = load_groq_keys(path)
+    model = load_groq_model(path)
+    return (keys[0] if keys else None), model
+
+
+def load_groq_keys(path: str | Path = _DEFAULT_KEYS_FILE) -> list[str]:
+    """Load Groq API keys from keys.env.
+    
+    Supports multiple formats:
+      - GROQ_API_KEYS=key1,key2,key3  (comma-separated)
+      - GROQ_API_KEY_1=key1           (numbered)
+      - GROQ_API_KEY_2=key2
+      - GROQ_API_KEY=single_key       (single key, backward compatible)
+    
+    Returns:
+        List of API keys. Empty list if no keys found.
     """
     keys_path = Path(path).resolve()
-    api_key: str | None = None
-    model: str = "llama3-8b"
+    keys: list[str] = []
+    seen: set[str] = set()
 
     if not keys_path.exists():
-        return None, model
+        return []
 
     with keys_path.open("r", encoding="utf-8") as fh:
         for line in fh:
             line = line.strip()
             if not line or line.startswith("#"):
                 continue
-            m = _GROQ_KEY_PATTERN.match(line)
+            match = _GROQ_KEY_PATTERN.match(line)
+            if not match:
+                continue
+            value = match.group(1).strip()
+            # Support comma-separated values
+            for key in [k.strip() for k in value.split(",")]:
+                if key and key not in seen:
+                    keys.append(key)
+                    seen.add(key)
+
+    return keys
+
+
+def load_groq_model(path: str | Path = _DEFAULT_KEYS_FILE) -> str:
+    """Load Groq model name from keys.env.
+    
+    Returns:
+        Model name, defaults to 'llama3-8b'.
+    """
+    keys_path = Path(path).resolve()
+    model: str = "llama3-8b"
+
+    if not keys_path.exists():
+        return model
+
+    with keys_path.open("r", encoding="utf-8") as fh:
+        for line in fh:
+            line = line.strip()
+            if not line or line.startswith("#"):
+                continue
+            m = _GROQ_MODEL_PATTERN.match(line)
             if m:
                 val = m.group(1).strip()
                 if val:
-                    api_key = val
-            m2 = _GROQ_MODEL_PATTERN.match(line)
-            if m2:
-                val2 = m2.group(1).strip()
-                if val2:
-                    model = val2
+                    model = val
+                    break
 
-    return api_key, model
+    return model
 
 
 def load_finnhub_key(path: str | Path = _DEFAULT_KEYS_FILE) -> str | None:
@@ -276,6 +331,60 @@ def load_alpaca_keys(path: str | Path = _DEFAULT_KEYS_FILE) -> tuple[str, str]:
     return api_key, secret_key  # type: ignore[return-value]  # guarded by missing check
 
 
+def load_ollama_model(path: str | Path = _DEFAULT_KEYS_FILE) -> str:
+    """Load Ollama model name from keys.env.
+    
+    Returns:
+        Model name, defaults to 'llama3.1:8b'.
+    """
+    keys_path = Path(path).resolve()
+    model: str = "llama3.1:8b"
+
+    if not keys_path.exists():
+        return model
+
+    with keys_path.open("r", encoding="utf-8") as fh:
+        for line in fh:
+            line = line.strip()
+            if not line or line.startswith("#"):
+                continue
+            m = _OLLAMA_MODEL_PATTERN.match(line)
+            if m:
+                val = m.group(1).strip()
+                if val:
+                    model = val
+                    break
+
+    return model
+
+
+def load_ollama_host(path: str | Path = _DEFAULT_KEYS_FILE) -> str:
+    """Load Ollama host URL from keys.env.
+    
+    Returns:
+        Host URL, defaults to 'http://localhost:11434'.
+    """
+    keys_path = Path(path).resolve()
+    host: str = "http://localhost:11434"
+
+    if not keys_path.exists():
+        return host
+
+    with keys_path.open("r", encoding="utf-8") as fh:
+        for line in fh:
+            line = line.strip()
+            if not line or line.startswith("#"):
+                continue
+            m = _OLLAMA_HOST_PATTERN.match(line)
+            if m:
+                val = m.group(1).strip()
+                if val:
+                    host = val
+                    break
+
+    return host
+
+
 def print_key_summary(keys: list[str]) -> None:
     """Print a masked summary of loaded keys."""
 
@@ -305,3 +414,15 @@ if __name__ == "__main__":
         print("\nGroq API key:        NOT SET")
         print("LLM decisions:       DISABLED (using SimpleRuleStrategy)")
         print("→ Add GROQ_API_KEY=your_key to keys.env")
+
+    # Show multi-key support
+    groq_keys = load_groq_keys()
+    if len(groq_keys) > 1:
+        print(f"\n✓ Key rotation enabled — {len(groq_keys)} keys loaded")
+        print(f"  Effective rate limit: {len(groq_keys) * 30} req/min")
+
+    # Ollama configuration
+    ollama_model = load_ollama_model()
+    ollama_host = load_ollama_host()
+    print(f"\nOllama model:        {ollama_model}")
+    print(f"Ollama host:         {ollama_host}")
