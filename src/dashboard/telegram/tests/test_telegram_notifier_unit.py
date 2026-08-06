@@ -15,8 +15,6 @@ so that patch() targets resolve correctly.
 """
 from __future__ import annotations
 
-import asyncio
-import logging
 import sys
 import os
 import unittest

@@ -4,9 +4,7 @@ Unit tests for communication.health.health_monitor.HealthMonitor.
 
 from __future__ import annotations
 
-import time
 from datetime import datetime, timezone, timedelta
-from typing import Callable
 from unittest.mock import MagicMock
 
 import pytest

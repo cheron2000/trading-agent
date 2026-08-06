@@ -25,11 +25,10 @@ import json
 import logging
 import urllib.request
 import urllib.parse
-from typing import ClassVar, Literal
+from typing import ClassVar
 
 from data.models.feature_vector import FeatureVector
 from intelligence.models.decision import Decision
-from intelligence.strategies.i_strategy import IStrategy
 
 _log = logging.getLogger(__name__)
 

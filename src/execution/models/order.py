@@ -56,7 +56,7 @@ class Order:
         if self.quantity < self._MIN_QUANTITY:
             raise ValueError(f"quantity must be >= {self._MIN_QUANTITY}.")
         if self.order_type not in self._VALID_ORDER_TYPES:
-            raise ValueError(f"order_type must be MARKET or LIMIT.")
+            raise ValueError("order_type must be MARKET or LIMIT.")
         if self.order_type == "LIMIT" and (
             self.limit_price is None or self.limit_price <= 0
         ):

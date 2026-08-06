@@ -41,7 +41,6 @@ from __future__ import annotations
 
 import json
 import logging
-import math
 import time
 from datetime import datetime, timezone
 from typing import ClassVar

@@ -22,9 +22,9 @@ import threading
 from typing import Callable
 from uuid import uuid4
 
-_log = logging.getLogger(__name__)
-
 from communication.interfaces.i_scheduler import IScheduler
+
+_log = logging.getLogger(__name__)
 
 
 class _ScheduledJob:

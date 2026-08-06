@@ -172,7 +172,6 @@ class PaperTradingRunner:
         # L5 — Execution
         self._portfolio = Portfolio(initial_cash=initial_capital)
         # Price feed: pull from the already-warmed cache (live) or fetch from fixture
-        import time as _time
         self._price_feed: dict[str, float] = {}
         for sym in _FIXTURE_SYMBOLS:
             try:

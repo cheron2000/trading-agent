@@ -16,7 +16,7 @@ Python Version: 3.11+
 from __future__ import annotations
 
 import json
-from typing import Any, ClassVar, Literal, Protocol, runtime_checkable
+from typing import Any, ClassVar, Protocol, runtime_checkable
 
 from data.models.feature_vector import FeatureVector
 from intelligence.agent.prompt_builder import PromptBuilder

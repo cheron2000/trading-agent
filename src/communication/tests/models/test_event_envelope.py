@@ -5,7 +5,6 @@ Unit tests for communication.models.event_envelope.
 from __future__ import annotations
 
 import pytest
-from datetime import datetime, timezone
 
 from foundation.base_event import BaseEvent
 from communication.models import EventEnvelope, EventMetadata, EventPriority

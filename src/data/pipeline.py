@@ -16,7 +16,7 @@ Python Version: 3.11+
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import timezone
 
 from communication.interfaces.i_event_bus import IEventBus
 from data.events.feature_vector_event import FeatureVectorEvent

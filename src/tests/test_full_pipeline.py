@@ -10,9 +10,7 @@ Wires all 7 layers together end-to-end:
 from __future__ import annotations
 
 import io
-import json
 from datetime import datetime, timezone
-from pathlib import Path
 
 import pytest
 
@@ -632,7 +630,7 @@ class TestFullEndToEndPipeline:
         # SELL at higher price
         sell_price_feed = {"AAPL": 200.0}
         sell_om = OrderManager(price_feed=sell_price_feed, bus=bus)
-        sell_risk = RiskEngine(price_feed=sell_price_feed, max_position_pct=0.10, min_confidence=0.60)
+        _sell_risk = RiskEngine(price_feed=sell_price_feed, max_position_pct=0.10, min_confidence=0.60)  # noqa: F841
         sell_decision = make_decision_event("AAPL", "SELL", confidence=0.80)
         sell_order = Order(
             symbol="AAPL", action="SELL",

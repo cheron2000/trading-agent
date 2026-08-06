@@ -22,7 +22,7 @@ from __future__ import annotations
 import json
 import logging
 import time
-from urllib.request import urlopen, Request
+from urllib.request import Request
 from urllib.error import HTTPError, URLError
 import urllib.request
 

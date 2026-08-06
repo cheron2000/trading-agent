@@ -8,7 +8,6 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-import pytest
 
 from analytics.journal.trade_journal import TradeJournal
 from analytics.metrics.metrics_engine import MetricsEngine
@@ -81,7 +80,7 @@ class TestReportGenerator:
 
     def test_journal_integrity_true_on_fresh_journal(self) -> None:
         report = _make_report(n_entries=3)
-        assert report["journal_integrity"] == True
+        assert report["journal_integrity"]
 
     def test_total_journal_entries_matches_count(self) -> None:
         report = _make_report(n_entries=5)

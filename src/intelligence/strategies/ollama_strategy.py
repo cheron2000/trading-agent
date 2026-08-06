@@ -250,7 +250,7 @@ class OllamaStrategy:
 
         # MACD
         macd_line = f.get("macd_line", 0.0)
-        macd_signal = f.get("macd_signal", 0.0)
+        _macd_signal = f.get("macd_signal", 0.0)  # Reserved for future use
         macd_hist = f.get("macd_histogram", 0.0)
         if macd_hist > 0 and macd_line > 0:
             macd_signal_txt = "BULLISH (MACD above signal, positive territory)"

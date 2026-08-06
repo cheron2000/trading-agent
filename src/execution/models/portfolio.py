@@ -14,7 +14,6 @@ Python Version: 3.11+
 from __future__ import annotations
 
 import threading
-from typing import ClassVar
 
 
 class Portfolio:

@@ -24,9 +24,8 @@ from typing import Callable
 from uuid import uuid4
 
 from foundation.base_event import BaseEvent
-from communication.bus.rate_limiter import RateLimiter, RateLimitExceeded
+from communication.bus.rate_limiter import RateLimiter
 from communication.models.event_priority import EventPriority
-from communication.models.event_metadata import EventMetadata
 from communication.models.subscription import Subscription
 from communication.interfaces.i_event_bus import IEventBus
 

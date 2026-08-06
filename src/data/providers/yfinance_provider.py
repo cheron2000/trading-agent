@@ -19,10 +19,10 @@ import time
 from datetime import datetime, timezone
 from typing import ClassVar
 
-_log = logging.getLogger(__name__)
-
 from data.models.market_tick import MarketTick
 from data.providers.i_data_provider import IDataProvider
+
+_log = logging.getLogger(__name__)
 
 # Cached price entry: (price, volume, timestamp, fetched_at_epoch)
 _CacheEntry = tuple[float, float, datetime, float]

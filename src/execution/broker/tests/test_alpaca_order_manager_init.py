@@ -12,8 +12,7 @@ Tests:
 
 from __future__ import annotations
 
-import logging
-from unittest.mock import MagicMock, patch, call
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -112,7 +111,7 @@ def test_init_paper_mode_logs_info_with_url():
 
     with patch("execution.broker.alpaca_order_manager.TradingClient"):
         with patch("execution.broker.alpaca_order_manager._LOG") as mock_log:
-            mgr = AlpacaOrderManager(
+            _ = AlpacaOrderManager(
                 bus=bus,
                 initial_portfolio_value=100_000.0,
                 api_key="TEST_KEY",
@@ -162,7 +161,7 @@ def test_init_live_mode_logs_warning():
 
     with patch("execution.broker.alpaca_order_manager.TradingClient"):
         with patch("execution.broker.alpaca_order_manager._LOG") as mock_log:
-            mgr = AlpacaOrderManager(
+            _ = AlpacaOrderManager(
                 bus=bus,
                 initial_portfolio_value=100_000.0,
                 api_key="TEST_KEY",

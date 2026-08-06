@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import math
 from typing import Any
-from unittest.mock import MagicMock, patch, PropertyMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 from hypothesis import given, settings, assume
