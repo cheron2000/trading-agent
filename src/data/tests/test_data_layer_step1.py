@@ -22,18 +22,34 @@ from data.normalizers.market_normalizer import MarketNormalizer
 TS = datetime(2024, 1, 15, 14, 30, 0, tzinfo=timezone.utc)
 
 FIXTURE_DATA = [
-    {"symbol": "AAPL", "price": 182.50, "volume": 1200000.0,
-     "timestamp": "2024-01-15T14:30:00+00:00", "source": "fixture"},
-    {"symbol": "MSFT", "price": 374.25, "volume": 850000.0,
-     "timestamp": "2024-01-15T14:30:00+00:00", "source": "fixture"},
-    {"symbol": "BTC-USD", "price": 42500.0, "volume": 18500.5,
-     "timestamp": "2024-01-15T14:30:00+00:00", "source": "fixture"},
+    {
+        "symbol": "AAPL",
+        "price": 182.50,
+        "volume": 1200000.0,
+        "timestamp": "2024-01-15T14:30:00+00:00",
+        "source": "fixture",
+    },
+    {
+        "symbol": "MSFT",
+        "price": 374.25,
+        "volume": 850000.0,
+        "timestamp": "2024-01-15T14:30:00+00:00",
+        "source": "fixture",
+    },
+    {
+        "symbol": "BTC-USD",
+        "price": 42500.0,
+        "volume": 18500.5,
+        "timestamp": "2024-01-15T14:30:00+00:00",
+        "source": "fixture",
+    },
 ]
 
 
 # ---------------------------------------------------------------------------
 # Fixture helper
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture()
 def fixture_file(tmp_path: Path) -> Path:
@@ -46,10 +62,13 @@ def fixture_file(tmp_path: Path) -> Path:
 # MarketTick
 # ---------------------------------------------------------------------------
 
+
 class TestMarketTick:
 
     def test_valid_creation(self) -> None:
-        t = MarketTick(symbol="AAPL", price=182.5, volume=1_000.0, timestamp=TS, source="fixture")
+        t = MarketTick(
+            symbol="AAPL", price=182.5, volume=1_000.0, timestamp=TS, source="fixture"
+        )
         assert t.symbol == "AAPL"
         assert t.price == 182.5
 
@@ -84,11 +103,15 @@ class TestMarketTick:
 
     def test_timestamp_utc_property(self) -> None:
         naive_ts = datetime(2024, 1, 1, 12, 0, 0)
-        t = MarketTick(symbol="AAPL", price=1.0, volume=0.0, timestamp=naive_ts, source="x")
+        t = MarketTick(
+            symbol="AAPL", price=1.0, volume=0.0, timestamp=naive_ts, source="x"
+        )
         assert t.timestamp_utc.tzinfo is not None
 
     def test_to_dict(self) -> None:
-        t = MarketTick(symbol="AAPL", price=182.5, volume=1000.0, timestamp=TS, source="fixture")
+        t = MarketTick(
+            symbol="AAPL", price=182.5, volume=1000.0, timestamp=TS, source="fixture"
+        )
         d = t.to_dict()
         assert d["symbol"] == "AAPL"
         assert d["price"] == 182.5
@@ -99,10 +122,13 @@ class TestMarketTick:
 # FeatureVector
 # ---------------------------------------------------------------------------
 
+
 class TestFeatureVector:
 
     def test_valid_creation(self) -> None:
-        fv = FeatureVector(symbol="AAPL", timestamp=TS, features={"sma_20": 180.0}, source_quality=0.9)
+        fv = FeatureVector(
+            symbol="AAPL", timestamp=TS, features={"sma_20": 180.0}, source_quality=0.9
+        )
         assert fv.symbol == "AAPL"
         assert fv.feature_count == 1
 
@@ -132,7 +158,9 @@ class TestFeatureVector:
             fv.symbol = "MSFT"  # type: ignore
 
     def test_to_dict(self) -> None:
-        fv = FeatureVector(symbol="AAPL", timestamp=TS, features={"rsi": 55.0}, source_quality=0.8)
+        fv = FeatureVector(
+            symbol="AAPL", timestamp=TS, features={"rsi": 55.0}, source_quality=0.8
+        )
         d = fv.to_dict()
         assert d["symbol"] == "AAPL"
         assert d["features"] == {"rsi": 55.0}
@@ -141,6 +169,7 @@ class TestFeatureVector:
 # ---------------------------------------------------------------------------
 # FeatureVectorEvent
 # ---------------------------------------------------------------------------
+
 
 class TestFeatureVectorEvent:
 
@@ -228,6 +257,7 @@ class TestFeatureVectorEvent:
 # MarketDataProvider — fixture contract tests
 # ---------------------------------------------------------------------------
 
+
 class TestMarketDataProvider:
 
     def test_satisfies_idataprovider_protocol(self, fixture_file: Path) -> None:
@@ -281,11 +311,17 @@ class TestMarketDataProvider:
 # MarketNormalizer
 # ---------------------------------------------------------------------------
 
+
 class TestMarketNormalizer:
 
     def test_valid_normalization(self) -> None:
         n = MarketNormalizer(source="alpaca")
-        raw = {"symbol": "AAPL", "price": 182.5, "volume": 1000.0, "timestamp": "2024-01-15T14:30:00+00:00"}
+        raw = {
+            "symbol": "AAPL",
+            "price": 182.5,
+            "volume": 1000.0,
+            "timestamp": "2024-01-15T14:30:00+00:00",
+        }
         tick = n.normalize(raw)
         assert tick.symbol == "AAPL"
         assert tick.price == 182.5
@@ -293,7 +329,14 @@ class TestMarketNormalizer:
 
     def test_symbol_uppercased(self) -> None:
         n = MarketNormalizer(source="x")
-        tick = n.normalize({"symbol": "aapl", "price": 1.0, "volume": 0.0, "timestamp": "2024-01-15T14:30:00+00:00"})
+        tick = n.normalize(
+            {
+                "symbol": "aapl",
+                "price": 1.0,
+                "volume": 0.0,
+                "timestamp": "2024-01-15T14:30:00+00:00",
+            }
+        )
         assert tick.symbol == "AAPL"
 
     def test_non_dict_raises_type_error(self) -> None:
@@ -304,42 +347,91 @@ class TestMarketNormalizer:
     def test_missing_symbol_raises(self) -> None:
         n = MarketNormalizer(source="x")
         with pytest.raises(ValueError, match="symbol"):
-            n.normalize({"price": 1.0, "volume": 0.0, "timestamp": "2024-01-15T14:30:00+00:00"})
+            n.normalize(
+                {"price": 1.0, "volume": 0.0, "timestamp": "2024-01-15T14:30:00+00:00"}
+            )
 
     def test_empty_symbol_raises(self) -> None:
         n = MarketNormalizer(source="x")
         with pytest.raises(ValueError):
-            n.normalize({"symbol": "", "price": 1.0, "volume": 0.0, "timestamp": "2024-01-15T14:30:00+00:00"})
+            n.normalize(
+                {
+                    "symbol": "",
+                    "price": 1.0,
+                    "volume": 0.0,
+                    "timestamp": "2024-01-15T14:30:00+00:00",
+                }
+            )
 
     def test_missing_price_raises(self) -> None:
         n = MarketNormalizer(source="x")
         with pytest.raises(ValueError, match="price"):
-            n.normalize({"symbol": "AAPL", "volume": 0.0, "timestamp": "2024-01-15T14:30:00+00:00"})
+            n.normalize(
+                {
+                    "symbol": "AAPL",
+                    "volume": 0.0,
+                    "timestamp": "2024-01-15T14:30:00+00:00",
+                }
+            )
 
     def test_zero_price_raises(self) -> None:
         n = MarketNormalizer(source="x")
         with pytest.raises(ValueError):
-            n.normalize({"symbol": "AAPL", "price": 0, "volume": 0.0, "timestamp": "2024-01-15T14:30:00+00:00"})
+            n.normalize(
+                {
+                    "symbol": "AAPL",
+                    "price": 0,
+                    "volume": 0.0,
+                    "timestamp": "2024-01-15T14:30:00+00:00",
+                }
+            )
 
     def test_negative_price_raises(self) -> None:
         n = MarketNormalizer(source="x")
         with pytest.raises(ValueError):
-            n.normalize({"symbol": "AAPL", "price": -5.0, "volume": 0.0, "timestamp": "2024-01-15T14:30:00+00:00"})
+            n.normalize(
+                {
+                    "symbol": "AAPL",
+                    "price": -5.0,
+                    "volume": 0.0,
+                    "timestamp": "2024-01-15T14:30:00+00:00",
+                }
+            )
 
     def test_non_numeric_price_raises(self) -> None:
         n = MarketNormalizer(source="x")
         with pytest.raises(ValueError):
-            n.normalize({"symbol": "AAPL", "price": "bad", "volume": 0.0, "timestamp": "2024-01-15T14:30:00+00:00"})
+            n.normalize(
+                {
+                    "symbol": "AAPL",
+                    "price": "bad",
+                    "volume": 0.0,
+                    "timestamp": "2024-01-15T14:30:00+00:00",
+                }
+            )
 
     def test_missing_volume_raises(self) -> None:
         n = MarketNormalizer(source="x")
         with pytest.raises(ValueError, match="volume"):
-            n.normalize({"symbol": "AAPL", "price": 1.0, "timestamp": "2024-01-15T14:30:00+00:00"})
+            n.normalize(
+                {
+                    "symbol": "AAPL",
+                    "price": 1.0,
+                    "timestamp": "2024-01-15T14:30:00+00:00",
+                }
+            )
 
     def test_negative_volume_raises(self) -> None:
         n = MarketNormalizer(source="x")
         with pytest.raises(ValueError):
-            n.normalize({"symbol": "AAPL", "price": 1.0, "volume": -1.0, "timestamp": "2024-01-15T14:30:00+00:00"})
+            n.normalize(
+                {
+                    "symbol": "AAPL",
+                    "price": 1.0,
+                    "volume": -1.0,
+                    "timestamp": "2024-01-15T14:30:00+00:00",
+                }
+            )
 
     def test_missing_timestamp_raises(self) -> None:
         n = MarketNormalizer(source="x")
@@ -349,16 +441,32 @@ class TestMarketNormalizer:
     def test_invalid_timestamp_string_raises(self) -> None:
         n = MarketNormalizer(source="x")
         with pytest.raises(ValueError):
-            n.normalize({"symbol": "AAPL", "price": 1.0, "volume": 0.0, "timestamp": "not-a-date"})
+            n.normalize(
+                {
+                    "symbol": "AAPL",
+                    "price": 1.0,
+                    "volume": 0.0,
+                    "timestamp": "not-a-date",
+                }
+            )
 
     def test_datetime_object_accepted(self) -> None:
         n = MarketNormalizer(source="x")
-        tick = n.normalize({"symbol": "AAPL", "price": 1.0, "volume": 0.0, "timestamp": TS})
+        tick = n.normalize(
+            {"symbol": "AAPL", "price": 1.0, "volume": 0.0, "timestamp": TS}
+        )
         assert tick.timestamp == TS
 
     def test_naive_timestamp_gets_utc(self) -> None:
         n = MarketNormalizer(source="x")
-        tick = n.normalize({"symbol": "AAPL", "price": 1.0, "volume": 0.0, "timestamp": "2024-01-15T14:30:00"})
+        tick = n.normalize(
+            {
+                "symbol": "AAPL",
+                "price": 1.0,
+                "volume": 0.0,
+                "timestamp": "2024-01-15T14:30:00",
+            }
+        )
         assert tick.timestamp.tzinfo is not None
 
     def test_empty_source_raises(self) -> None:

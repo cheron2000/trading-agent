@@ -36,8 +36,7 @@ EVENT_SCHEMA_VERSION: str = "1.0"
 DEFAULT_LOGGER_NAME: str = "aitos"
 
 DEFAULT_LOG_FORMAT: str = (
-    "%(asctime)s | %(levelname)s | %(name)s | "
-    "%(filename)s:%(lineno)d | %(message)s"
+    "%(asctime)s | %(levelname)s | %(name)s | " "%(filename)s:%(lineno)d | %(message)s"
 )
 
 DEFAULT_DATE_FORMAT: str = "%Y-%m-%d %H:%M:%S"

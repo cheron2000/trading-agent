@@ -74,14 +74,24 @@ class TestEventMetadata:
 
     def test_is_retry_event(self) -> None:
         assert EventMetadata(source_component="x", retry_count=1).is_retry_event is True
-        assert EventMetadata(source_component="x", retry_count=0).is_retry_event is False
+        assert (
+            EventMetadata(source_component="x", retry_count=0).is_retry_event is False
+        )
 
     def test_is_routing_targeted(self) -> None:
-        assert EventMetadata(source_component="x", target_component="y").is_routing_targeted is True
+        assert (
+            EventMetadata(
+                source_component="x", target_component="y"
+            ).is_routing_targeted
+            is True
+        )
         assert EventMetadata(source_component="x").is_routing_targeted is False
 
     def test_is_transport_assigned(self) -> None:
-        assert EventMetadata(source_component="x", transport_id="t1").is_transport_assigned is True
+        assert (
+            EventMetadata(source_component="x", transport_id="t1").is_transport_assigned
+            is True
+        )
         assert EventMetadata(source_component="x").is_transport_assigned is False
 
     def test_created_at_is_per_instance(self) -> None:
@@ -113,7 +123,9 @@ class TestEventMetadata:
 
     def test_to_dict(self) -> None:
         ts = datetime(2025, 6, 1, tzinfo=timezone.utc)
-        m = EventMetadata(source_component="orion", priority=EventPriority.LOW, created_at=ts)
+        m = EventMetadata(
+            source_component="orion", priority=EventPriority.LOW, created_at=ts
+        )
         d = m.to_dict()
         assert d["source_component"] == "orion"
         assert d["priority"] == EventPriority.LOW.value

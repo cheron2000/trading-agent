@@ -60,6 +60,7 @@ def client():
 # Route smoke tests
 # ---------------------------------------------------------------------------
 
+
 def test_index_route(client):
     """Index route returns HTTP 200 with the full dashboard HTML."""
     response = client.get("/")
@@ -136,6 +137,7 @@ def test_control_kill_route(client):
 # ---------------------------------------------------------------------------
 # Singleton state API tests
 # ---------------------------------------------------------------------------
+
 
 def test_set_running_initialises_capital():
     ds.set_running(True, capital=50_000.0)

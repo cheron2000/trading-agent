@@ -20,6 +20,7 @@ from communication.models.health_state import HealthState
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def make_heartbeat(
     component: str = "orion",
     state: HealthState = HealthState.RUNNING,
@@ -42,6 +43,7 @@ def make_heartbeat(
 # Protocol compliance
 # ---------------------------------------------------------------------------
 
+
 class TestHealthMonitorProtocolCompliance:
 
     def test_satisfies_ihealthmonitor_protocol(self) -> None:
@@ -51,6 +53,7 @@ class TestHealthMonitorProtocolCompliance:
 # ---------------------------------------------------------------------------
 # Constructor
 # ---------------------------------------------------------------------------
+
 
 class TestHealthMonitorInit:
 
@@ -74,6 +77,7 @@ class TestHealthMonitorInit:
 # ---------------------------------------------------------------------------
 # register()
 # ---------------------------------------------------------------------------
+
 
 class TestHealthMonitorRegister:
 
@@ -108,6 +112,7 @@ class TestHealthMonitorRegister:
 # ---------------------------------------------------------------------------
 # record_heartbeat()
 # ---------------------------------------------------------------------------
+
 
 class TestHealthMonitorRecordHeartbeat:
 
@@ -152,6 +157,7 @@ class TestHealthMonitorRecordHeartbeat:
 # is_alive()
 # ---------------------------------------------------------------------------
 
+
 class TestHealthMonitorIsAlive:
 
     def test_alive_running_component(self) -> None:
@@ -186,13 +192,17 @@ class TestHealthMonitorIsAlive:
     def test_not_alive_expired_heartbeat(self) -> None:
         m = HealthMonitor(liveness_window_seconds=1)
         old_ts = datetime.now(timezone.utc) - timedelta(seconds=60)
-        m.record_heartbeat(make_heartbeat("orion", state=HealthState.RUNNING, last_seen=old_ts))
+        m.record_heartbeat(
+            make_heartbeat("orion", state=HealthState.RUNNING, last_seen=old_ts)
+        )
         assert m.is_alive("orion") is False
 
     def test_alive_within_liveness_window(self) -> None:
         m = HealthMonitor(liveness_window_seconds=30)
         recent_ts = datetime.now(timezone.utc) - timedelta(seconds=5)
-        m.record_heartbeat(make_heartbeat("orion", state=HealthState.RUNNING, last_seen=recent_ts))
+        m.record_heartbeat(
+            make_heartbeat("orion", state=HealthState.RUNNING, last_seen=recent_ts)
+        )
         assert m.is_alive("orion") is True
 
     def test_not_alive_starting_state(self) -> None:

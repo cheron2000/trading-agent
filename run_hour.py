@@ -98,13 +98,12 @@ except ImportError:
 logging.basicConfig(level=logging.WARNING)
 _log = logging.getLogger(__name__)
 
-# TEMP: Using only 24/7 crypto markets for faster Ollama execution
-# Original: ["AAPL", "MSFT", "GOOGL", "BTC-USD", "ETH-USD", "TSLA"]
-SYMBOLS = ["BTC-USD", "ETH-USD", "SOL-USD", "AVAX-USD", "MATIC-USD", "LINK-USD"]
+# Trading universe — 3 stocks + 3 crypto for balanced coverage
+SYMBOLS = ["AAPL", "MSFT", "GOOGL", "BTC-USD", "ETH-USD", "TSLA"]
 
 # Symbols that only trade during NYSE market hours
-_STOCK_SYMBOLS = set()  # Empty - using only crypto
-_CRYPTO_SYMBOLS = {"BTC-USD", "ETH-USD", "SOL-USD", "AVAX-USD", "MATIC-USD", "LINK-USD"}
+_STOCK_SYMBOLS = {"AAPL", "MSFT", "GOOGL", "TSLA"}
+_CRYPTO_SYMBOLS = {"BTC-USD", "ETH-USD"}
 
 # Correlation groups — limit simultaneous long positions within each group
 _CORRELATION_GROUPS = [

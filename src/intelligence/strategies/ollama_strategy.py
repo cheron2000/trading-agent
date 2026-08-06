@@ -66,10 +66,7 @@ class OllamaStrategy:
             temperature=temperature,
         )
         self._model = model
-        _log.info(
-            "OllamaStrategy initialized — model: %s, host: %s",
-            model, host
-        )
+        _log.info("OllamaStrategy initialized — model: %s, host: %s", model, host)
 
     # ------------------------------------------------------------------
     # IStrategy implementation
@@ -134,7 +131,8 @@ class OllamaStrategy:
             # Graceful fallback to HOLD on any error
             _log.warning(
                 "LLM strategy error for %s: %s — falling back to HOLD",
-                feature_vector.symbol, exc
+                feature_vector.symbol,
+                exc,
             )
             return Decision(
                 symbol=feature_vector.symbol,
@@ -156,7 +154,7 @@ class OllamaStrategy:
             position_context: Optional dict with keys:
                 - 'has_position': bool
                 - 'entry_price': float
-                - 'current_price': float  
+                - 'current_price': float
                 - 'pnl_pct': float (e.g. 2.5 means +2.5%)
                 - 'hold_cycles': int (how many cycles held)
 
@@ -198,7 +196,8 @@ class OllamaStrategy:
         except Exception as exc:
             _log.warning(
                 "LLM strategy error for %s: %s — falling back to HOLD",
-                feature_vector.symbol, exc
+                feature_vector.symbol,
+                exc,
             )
             return Decision(
                 symbol=feature_vector.symbol,
@@ -212,7 +211,9 @@ class OllamaStrategy:
     # Prompt engineering
     # ------------------------------------------------------------------
 
-    def _build_prompt(self, fv: FeatureVector, position_context: dict | None = None) -> str:
+    def _build_prompt(
+        self, fv: FeatureVector, position_context: dict | None = None
+    ) -> str:
         """Build a rich trading prompt from feature vector with technical indicators.
 
         Args:
@@ -266,9 +267,13 @@ class OllamaStrategy:
         bb_lower = f.get("bb_lower", price * 0.98)
         bb_upper = f.get("bb_upper", price * 1.02)
         if bb_pos < 0.2:
-            bb_signal = f"NEAR LOWER BAND (potential bounce, support at ${bb_lower:.2f})"
+            bb_signal = (
+                f"NEAR LOWER BAND (potential bounce, support at ${bb_lower:.2f})"
+            )
         elif bb_pos > 0.8:
-            bb_signal = f"NEAR UPPER BAND (potential reversal, resistance at ${bb_upper:.2f})"
+            bb_signal = (
+                f"NEAR UPPER BAND (potential reversal, resistance at ${bb_upper:.2f})"
+            )
         else:
             bb_signal = f"MID-BAND (position: {bb_pos:.0%} of range)"
 
@@ -281,22 +286,26 @@ class OllamaStrategy:
             vol_signal = f"{volume_ratio:.1f}x average (NORMAL)"
 
         # Count bullish vs bearish signals
-        bullish = sum([
-            rsi < 40,
-            macd_hist > 0,
-            bb_pos < 0.3,
-            sma_5 > sma_20,
-            price_change_pct > 0,
-            volume_ratio > 1.2,
-        ])
-        bearish = sum([
-            rsi > 60,
-            macd_hist < 0,
-            bb_pos > 0.7,
-            sma_5 < sma_20,
-            price_change_pct < 0,
-            volume_ratio > 1.5 and price_change_pct < 0,
-        ])
+        bullish = sum(
+            [
+                rsi < 40,
+                macd_hist > 0,
+                bb_pos < 0.3,
+                sma_5 > sma_20,
+                price_change_pct > 0,
+                volume_ratio > 1.2,
+            ]
+        )
+        bearish = sum(
+            [
+                rsi > 60,
+                macd_hist < 0,
+                bb_pos > 0.7,
+                sma_5 < sma_20,
+                price_change_pct < 0,
+                volume_ratio > 1.5 and price_change_pct < 0,
+            ]
+        )
 
         # Build position context section
         if position_context and position_context.get("has_position"):
@@ -395,7 +404,9 @@ Respond with ONLY this JSON object, no other text:
             conf = float(confidence)
             return max(0.0, min(1.0, conf))
         except (ValueError, TypeError):
-            _log.warning("Invalid confidence from LLM: %s — defaulting to 0.5", confidence)
+            _log.warning(
+                "Invalid confidence from LLM: %s — defaulting to 0.5", confidence
+            )
             return 0.5
 
     def _validate_rationale(self, rationale: str) -> str:
@@ -409,7 +420,7 @@ Respond with ONLY this JSON object, no other text:
         """
         if not rationale or not str(rationale).strip():
             return "LLM provided no rationale"
-        
+
         rat = str(rationale).strip()
         if len(rat) > 2048:
             return rat[:2045] + "..."
@@ -417,6 +428,6 @@ Respond with ONLY this JSON object, no other text:
 
 
 # Runtime protocol check
-assert isinstance(OllamaStrategy(), IStrategy), (
-    "OllamaStrategy does not satisfy the IStrategy Protocol."
-)
+assert isinstance(
+    OllamaStrategy(), IStrategy
+), "OllamaStrategy does not satisfy the IStrategy Protocol."

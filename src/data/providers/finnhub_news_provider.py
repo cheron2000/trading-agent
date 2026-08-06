@@ -32,14 +32,47 @@ _BASE_URL = "https://finnhub.io/api/v1/company-news"
 
 # Simple sentiment scoring based on keywords in headline
 _BULLISH_WORDS = {
-    "beat", "beats", "surge", "surges", "record", "profit", "growth",
-    "upgrade", "buy", "strong", "bullish", "rally", "gains", "positive",
-    "exceeds", "outperform", "raises", "boost", "soars",
+    "beat",
+    "beats",
+    "surge",
+    "surges",
+    "record",
+    "profit",
+    "growth",
+    "upgrade",
+    "buy",
+    "strong",
+    "bullish",
+    "rally",
+    "gains",
+    "positive",
+    "exceeds",
+    "outperform",
+    "raises",
+    "boost",
+    "soars",
 }
 _BEARISH_WORDS = {
-    "miss", "misses", "fall", "falls", "loss", "losses", "decline",
-    "downgrade", "sell", "weak", "bearish", "drop", "drops", "negative",
-    "disappoints", "underperform", "cuts", "layoffs", "warns", "crash",
+    "miss",
+    "misses",
+    "fall",
+    "falls",
+    "loss",
+    "losses",
+    "decline",
+    "downgrade",
+    "sell",
+    "weak",
+    "bearish",
+    "drop",
+    "drops",
+    "negative",
+    "disappoints",
+    "underperform",
+    "cuts",
+    "layoffs",
+    "warns",
+    "crash",
 }
 
 
@@ -82,9 +115,9 @@ class FinnhubNewsProvider:
         self,
         api_key: str,
         max_articles: int = 5,
-        cache_ttl: float = 300.0,   # 5-min cache
-        lookback_days: int = 2,     # fetch last 2 days of news
-        min_delay: float = 1.0,     # min seconds between API calls (60 req/min safe)
+        cache_ttl: float = 300.0,  # 5-min cache
+        lookback_days: int = 2,  # fetch last 2 days of news
+        min_delay: float = 1.0,  # min seconds between API calls (60 req/min safe)
     ) -> None:
         """
         Args:
@@ -140,7 +173,7 @@ class FinnhubNewsProvider:
             return ""
 
         lines = [f"Recent news for {symbol} ({len(headlines)} articles, Finnhub):"]
-        for h in headlines[:self._max_articles]:
+        for h in headlines[: self._max_articles]:
             label = h.get("sentiment_label", "Neutral")
             score = h.get("sentiment_score", 0.0)
             title = h.get("title", "")[:80]
@@ -195,16 +228,18 @@ class FinnhubNewsProvider:
             return []
 
         articles = []
-        for item in data[:self._max_articles]:
+        for item in data[: self._max_articles]:
             headline = item.get("headline", "")
             score, label = _score_headline(headline)
-            articles.append({
-                "title": headline,
-                "source": item.get("source", ""),
-                "time_published": str(item.get("datetime", "")),
-                "sentiment_label": label,
-                "sentiment_score": score,
-            })
+            articles.append(
+                {
+                    "title": headline,
+                    "source": item.get("source", ""),
+                    "time_published": str(item.get("datetime", "")),
+                    "sentiment_label": label,
+                    "sentiment_score": score,
+                }
+            )
 
         _log.info("Finnhub news: %d articles for %s", len(articles), symbol)
         return articles

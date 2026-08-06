@@ -44,7 +44,10 @@ class TestPluginManifest:
         assert m.publishes_events is True
         assert m.subscribes_to_events is True
 
-    @pytest.mark.parametrize("field", ["plugin_id", "name", "version", "author", "api_version", "entry_point"])
+    @pytest.mark.parametrize(
+        "field",
+        ["plugin_id", "name", "version", "author", "api_version", "entry_point"],
+    )
     def test_empty_required_field_raises(self, field: str) -> None:
         kwargs = {**VALID_KWARGS, field: ""}
         with pytest.raises(ValueError):

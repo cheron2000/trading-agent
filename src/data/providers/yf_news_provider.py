@@ -22,15 +22,52 @@ _log = logging.getLogger(__name__)
 
 # Sentiment keyword sets (same as Finnhub provider)
 _BULLISH_WORDS = {
-    "beat", "beats", "surge", "surges", "record", "profit", "growth",
-    "upgrade", "buy", "strong", "bullish", "rally", "gains", "positive",
-    "exceeds", "outperform", "raises", "boost", "soars", "high", "rises",
+    "beat",
+    "beats",
+    "surge",
+    "surges",
+    "record",
+    "profit",
+    "growth",
+    "upgrade",
+    "buy",
+    "strong",
+    "bullish",
+    "rally",
+    "gains",
+    "positive",
+    "exceeds",
+    "outperform",
+    "raises",
+    "boost",
+    "soars",
+    "high",
+    "rises",
 }
 _BEARISH_WORDS = {
-    "miss", "misses", "fall", "falls", "loss", "losses", "decline",
-    "downgrade", "sell", "weak", "bearish", "drop", "drops", "negative",
-    "disappoints", "underperform", "cuts", "layoffs", "warns", "crash",
-    "low", "sinks", "slumps",
+    "miss",
+    "misses",
+    "fall",
+    "falls",
+    "loss",
+    "losses",
+    "decline",
+    "downgrade",
+    "sell",
+    "weak",
+    "bearish",
+    "drop",
+    "drops",
+    "negative",
+    "disappoints",
+    "underperform",
+    "cuts",
+    "layoffs",
+    "warns",
+    "crash",
+    "low",
+    "sinks",
+    "slumps",
 }
 
 
@@ -68,7 +105,7 @@ class YFNewsProvider:
         self,
         max_articles: int = 5,
         cache_ttl: float = 300.0,  # 5-min cache
-        min_delay: float = 2.0,    # courtesy delay between requests
+        min_delay: float = 2.0,  # courtesy delay between requests
     ) -> None:
         self._max_articles = max_articles
         self._cache_ttl = cache_ttl
@@ -110,8 +147,10 @@ class YFNewsProvider:
         if not headlines:
             return ""
 
-        lines = [f"Recent news for {symbol} ({len(headlines)} articles, Yahoo Finance):"]
-        for h in headlines[:self._max_articles]:
+        lines = [
+            f"Recent news for {symbol} ({len(headlines)} articles, Yahoo Finance):"
+        ]
+        for h in headlines[: self._max_articles]:
             label = h.get("sentiment_label", "Neutral")
             score = h.get("sentiment_score", 0.0)
             title = h.get("title", "")[:80]
@@ -154,11 +193,12 @@ class YFNewsProvider:
             return []
 
         articles = []
-        for item in raw_news[:self._max_articles]:
+        for item in raw_news[: self._max_articles]:
             # yfinance news item structure varies by version
             title = (
-                item.get("title", "") or
-                item.get("content", {}).get("title", "") if isinstance(item.get("content"), dict) else ""
+                item.get("title", "") or item.get("content", {}).get("title", "")
+                if isinstance(item.get("content"), dict)
+                else ""
             )
             if not title:
                 continue
@@ -167,13 +207,15 @@ class YFNewsProvider:
             source = item.get("publisher", item.get("source", "Yahoo Finance"))
 
             score, label = _score_headline(title)
-            articles.append({
-                "title": title,
-                "source": source,
-                "time_published": str(pub_time),
-                "sentiment_label": label,
-                "sentiment_score": score,
-            })
+            articles.append(
+                {
+                    "title": title,
+                    "source": source,
+                    "time_published": str(pub_time),
+                    "sentiment_label": label,
+                    "sentiment_score": score,
+                }
+            )
 
         _log.info("YF news: %d articles for %s", len(articles), symbol)
         return articles

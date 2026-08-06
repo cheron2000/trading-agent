@@ -61,8 +61,8 @@ class _ScheduledJob:
                 self.callback()
             except Exception:
                 _log.exception(
-                    "Scheduler callback raised an unhandled exception "
-                    "(job_id=%s)", self.job_id
+                    "Scheduler callback raised an unhandled exception " "(job_id=%s)",
+                    self.job_id,
                 )
 
 
@@ -106,9 +106,7 @@ class Scheduler:
             ValueError: If ``interval_seconds`` is zero or negative.
         """
         if interval_seconds <= 0:
-            raise ValueError(
-                "interval_seconds must be greater than zero."
-            )
+            raise ValueError("interval_seconds must be greater than zero.")
 
         job_id = str(uuid4())
         job = _ScheduledJob(
@@ -156,6 +154,6 @@ class Scheduler:
 
 
 # Runtime protocol check — ensures Scheduler satisfies IScheduler.
-assert isinstance(Scheduler(), IScheduler), (
-    "Scheduler does not satisfy the IScheduler Protocol."
-)
+assert isinstance(
+    Scheduler(), IScheduler
+), "Scheduler does not satisfy the IScheduler Protocol."

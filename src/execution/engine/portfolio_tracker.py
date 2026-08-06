@@ -58,9 +58,7 @@ class PortfolioTracker:
                 price=fill.fill_price,
             )
 
-    def get_position(
-        self, symbol: str, current_price: float
-    ) -> Position | None:
+    def get_position(self, symbol: str, current_price: float) -> Position | None:
         """Return a Position snapshot for a symbol, or None if flat.
 
         Args:

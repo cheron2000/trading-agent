@@ -76,7 +76,9 @@ class LLMAgent:
     def strategy_id(self) -> str:
         return self._strategy_id
 
-    def evaluate(self, feature_vector: FeatureVector, news_context: str = "") -> Decision:
+    def evaluate(
+        self, feature_vector: FeatureVector, news_context: str = ""
+    ) -> Decision:
         """Evaluate a feature vector via the LLM and return a Decision.
 
         Args:
@@ -118,9 +120,7 @@ class LLMAgent:
         try:
             data = json.loads(raw)
         except json.JSONDecodeError as exc:
-            raise ValueError(
-                f"LLM response is not valid JSON: {raw!r}"
-            ) from exc
+            raise ValueError(f"LLM response is not valid JSON: {raw!r}") from exc
 
         if not isinstance(data, dict):
             raise ValueError(
@@ -152,9 +152,7 @@ class LLMAgent:
         # Validate rationale
         rationale = data.get("rationale", "")
         if not isinstance(rationale, str) or not rationale.strip():
-            raise ValueError(
-                "LLM response 'rationale' must be a non-empty string."
-            )
+            raise ValueError("LLM response 'rationale' must be a non-empty string.")
 
         return Decision(
             symbol=symbol,

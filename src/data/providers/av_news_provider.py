@@ -132,7 +132,7 @@ class AVNewsProvider:
             return ""
 
         lines = [f"Recent news for {symbol} ({len(headlines)} articles):"]
-        for h in headlines[:self._max_articles]:
+        for h in headlines[: self._max_articles]:
             label = h.get("sentiment_label", "Neutral")
             score = h.get("sentiment_score", 0.0)
             title = h.get("title", "")[:80]  # truncate long titles
@@ -191,7 +191,7 @@ class AVNewsProvider:
             return []
 
         articles = []
-        for item in feed[:self._max_articles]:
+        for item in feed[: self._max_articles]:
             # Find ticker-specific sentiment
             ticker_sentiments = item.get("ticker_sentiment", [])
             ticker_score = 0.0
@@ -205,14 +205,21 @@ class AVNewsProvider:
                         pass
                     break
 
-            articles.append({
-                "title": item.get("title", ""),
-                "source": item.get("source", ""),
-                "time_published": item.get("time_published", ""),
-                "sentiment_label": ticker_label,
-                "sentiment_score": ticker_score,
-            })
+            articles.append(
+                {
+                    "title": item.get("title", ""),
+                    "source": item.get("source", ""),
+                    "time_published": item.get("time_published", ""),
+                    "sentiment_label": ticker_label,
+                    "sentiment_score": ticker_score,
+                }
+            )
 
-        _log.info("News fetched for %s — %d articles (key %d/%d)",
-                  symbol, len(articles), self._key_index + 1, len(self._keys))
+        _log.info(
+            "News fetched for %s — %d articles (key %d/%d)",
+            symbol,
+            len(articles),
+            self._key_index + 1,
+            len(self._keys),
+        )
         return articles

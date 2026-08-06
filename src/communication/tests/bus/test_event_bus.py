@@ -160,6 +160,7 @@ class TestEventBusThreadSafety:
             def handler(e: BaseEvent) -> None:
                 with lock:
                     received.append(e)
+
             bus.subscribe("market.tick", handler)
 
         threads = [threading.Thread(target=subscriber) for _ in range(3)]

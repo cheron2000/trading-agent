@@ -55,14 +55,14 @@ class AtlasStrategy:
             timeout: HTTP request timeout in seconds.
         """
         self._groq_keys = (
-            [groq_api_key] if isinstance(groq_api_key, str)
-            else groq_api_key if isinstance(groq_api_key, list)
-            else []
+            [groq_api_key]
+            if isinstance(groq_api_key, str)
+            else groq_api_key if isinstance(groq_api_key, list) else []
         )
         self._groq_keys = [k.strip() for k in self._groq_keys if k and k.strip()]
         self._groq_key_idx = 0
         self._groq_model = groq_model
-        
+
         self._ollama_host = ollama_host.rstrip("/")
         self._ollama_model = ollama_model
         self._timeout = timeout
@@ -94,7 +94,9 @@ class AtlasStrategy:
                 response_json_str = self._call_groq(prompt)
                 engine_used = f"Groq ({self._groq_model})"
             except Exception as exc:
-                _log.warning("ATLAS Groq call failed (%s) — falling back to local Ollama", exc)
+                _log.warning(
+                    "ATLAS Groq call failed (%s) — falling back to local Ollama", exc
+                )
 
         # 2. Fall back to local Ollama
         if response_json_str is None:
@@ -102,7 +104,9 @@ class AtlasStrategy:
                 response_json_str = self._call_ollama(prompt)
                 engine_used = f"Ollama ({self._ollama_model})"
             except Exception as exc:
-                _log.warning("ATLAS Ollama call failed (%s) — returning default HOLD", exc)
+                _log.warning(
+                    "ATLAS Ollama call failed (%s) — returning default HOLD", exc
+                )
                 return Decision(
                     symbol=feature_vector.symbol,
                     action="HOLD",
@@ -112,7 +116,9 @@ class AtlasStrategy:
                 )
 
         # 3. Parse and validate JSON output
-        return self._parse_atlas_response(feature_vector.symbol, response_json_str, engine_used)
+        return self._parse_atlas_response(
+            feature_vector.symbol, response_json_str, engine_used
+        )
 
     # ------------------------------------------------------------------
     # LLM Engines (Groq & Ollama)
@@ -130,14 +136,15 @@ class AtlasStrategy:
         }
         payload = {
             "model": self._groq_model,
-            "messages": [
-                {"role": "user", "content": prompt}
-            ],
+            "messages": [{"role": "user", "content": prompt}],
             "temperature": 0.1,
             "response_format": {"type": "json_object"},
         }
         req = urllib.request.Request(
-            url, data=json.dumps(payload).encode("utf-8"), headers=headers, method="POST"
+            url,
+            data=json.dumps(payload).encode("utf-8"),
+            headers=headers,
+            method="POST",
         )
         with urllib.request.urlopen(req, timeout=self._timeout) as resp:
             data = json.loads(resp.read().decode("utf-8"))
@@ -154,8 +161,10 @@ class AtlasStrategy:
             "options": {"temperature": 0.1},
         }
         req = urllib.request.Request(
-            url, data=json.dumps(payload).encode("utf-8"),
-            headers={"Content-Type": "application/json"}, method="POST"
+            url,
+            data=json.dumps(payload).encode("utf-8"),
+            headers={"Content-Type": "application/json"},
+            method="POST",
         )
         with urllib.request.urlopen(req, timeout=self._timeout) as resp:
             data = json.loads(resp.read().decode("utf-8"))
@@ -263,7 +272,9 @@ Respond with ONLY this JSON object, no markdown or surrounding text:
   "reasoning": "<2-3 sentences citing exact RSI, MACD, BB, and regime numbers>"
 }}"""
 
-    def _parse_atlas_response(self, symbol: str, text: str, engine_name: str) -> Decision:
+    def _parse_atlas_response(
+        self, symbol: str, text: str, engine_name: str
+    ) -> Decision:
         try:
             raw = text.strip()
             # Extract JSON object between first '{' and last '}'

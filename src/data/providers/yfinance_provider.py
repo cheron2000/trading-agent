@@ -66,11 +66,10 @@ class YFinanceProvider:
         """
         try:
             import yfinance as yf
+
             self._yf = yf
         except ImportError as exc:
-            raise ImportError(
-                "yfinance is required: pip install yfinance"
-            ) from exc
+            raise ImportError("yfinance is required: pip install yfinance") from exc
 
         self._symbols = [s.upper() for s in (symbols or [])]
         self._ttl = ttl_seconds
@@ -87,6 +86,7 @@ class YFinanceProvider:
         if use_tor:
             import os
             from data.providers.tor_session import TorProxySession
+
             self._tor = TorProxySession(control_password=tor_control_password)
             # Set env-level proxy so yfinance's internal requests picks it up
             os.environ["HTTP_PROXY"] = "socks5h://127.0.0.1:9150"
@@ -140,9 +140,7 @@ class YFinanceProvider:
 
         entry = self._cache.get(sym)
         if entry is None:
-            raise ValueError(
-                f"No data available for symbol '{sym}'."
-            )
+            raise ValueError(f"No data available for symbol '{sym}'.")
 
         price, volume, ts, _ = entry
         return MarketTick(
@@ -229,7 +227,8 @@ class YFinanceProvider:
             missing = [s for s in symbols if s.upper() not in self._cache]
             if missing:
                 _log.warning(
-                    "Tor fetch failed for %s — falling back to direct yfinance.", missing
+                    "Tor fetch failed for %s — falling back to direct yfinance.",
+                    missing,
                 )
                 self._fetch_via_yfinance(missing)
         else:
@@ -247,9 +246,9 @@ class YFinanceProvider:
                         f"https://query1.finance.yahoo.com/v8/finance/chart/{sym}"
                         f"?interval=1m&range=1d"
                     )
-                    resp = session.get(url, timeout=15, headers={
-                        "User-Agent": "Mozilla/5.0"
-                    })
+                    resp = session.get(
+                        url, timeout=15, headers={"User-Agent": "Mozilla/5.0"}
+                    )
                     if resp.status_code == 429:
                         self._tor.rotate_ip()
                         time.sleep(10)
@@ -266,7 +265,9 @@ class YFinanceProvider:
                     if not valid_closes:
                         raise ValueError(f"No valid close prices in response for {sym}")
                     price = float(valid_closes[-1])
-                    volume = float(next((v for v in reversed(volumes) if v is not None), 0.0))
+                    volume = float(
+                        next((v for v in reversed(volumes) if v is not None), 0.0)
+                    )
                     self._cache[sym] = (price, volume, now_dt, now_epoch)
 
                     # Keep the real recent bars (not just the last one) so
@@ -277,7 +278,11 @@ class YFinanceProvider:
                         c = closes[i]
                         if c is None:
                             continue
-                        v = volumes[i] if i < len(volumes) and volumes[i] is not None else 0.0
+                        v = (
+                            volumes[i]
+                            if i < len(volumes) and volumes[i] is not None
+                            else 0.0
+                        )
                         ts = (
                             datetime.fromtimestamp(timestamps[i], tz=timezone.utc)
                             if i < len(timestamps) and timestamps[i] is not None
@@ -285,15 +290,23 @@ class YFinanceProvider:
                         )
                         recent.append(
                             MarketTick(
-                                symbol=sym, price=float(c), volume=float(v),
-                                timestamp=ts, source=self.SOURCE_NAME,
+                                symbol=sym,
+                                price=float(c),
+                                volume=float(v),
+                                timestamp=ts,
+                                source=self.SOURCE_NAME,
                             )
                         )
                     if recent:
-                        self._recent_cache[sym] = recent[-self._HISTORY_LEN:]
+                        self._recent_cache[sym] = recent[-self._HISTORY_LEN :]
                     break
                 except Exception as exc:
-                    _log.warning("Tor fetch failed for %s (attempt %d): %s", sym, attempt + 1, exc)
+                    _log.warning(
+                        "Tor fetch failed for %s (attempt %d): %s",
+                        sym,
+                        attempt + 1,
+                        exc,
+                    )
                     if attempt < self._MAX_RETRIES - 1:
                         try:
                             self._tor.rotate_ip()
@@ -324,7 +337,9 @@ class YFinanceProvider:
                 else:
                     for sym in symbols:
                         try:
-                            self._store_single(sym.upper(), data[sym.upper()], now_epoch)
+                            self._store_single(
+                                sym.upper(), data[sym.upper()], now_epoch
+                            )
                         except (KeyError, TypeError):
                             continue
                 return
@@ -349,12 +364,13 @@ class YFinanceProvider:
                 return
 
             import pandas as pd
+
             if isinstance(df.columns, pd.MultiIndex):
                 df.columns = df.columns.get_level_values(0)
 
             last = df.iloc[-1]
-            close_col = [c for c in df.columns if str(c).lower() == 'close']
-            vol_col = [c for c in df.columns if str(c).lower() == 'volume']
+            close_col = [c for c in df.columns if str(c).lower() == "close"]
+            vol_col = [c for c in df.columns if str(c).lower() == "volume"]
 
             price = float(last[close_col[0]]) if close_col else float(last.iloc[0])
             volume = float(last[vol_col[0]]) if vol_col else 0.0
@@ -376,7 +392,9 @@ class YFinanceProvider:
                     row_ts = row.name.to_pydatetime()
                     if row_ts.tzinfo is None:
                         row_ts = row_ts.replace(tzinfo=timezone.utc)
-                    r_price = float(row[close_col[0]]) if close_col else float(row.iloc[0])
+                    r_price = (
+                        float(row[close_col[0]]) if close_col else float(row.iloc[0])
+                    )
                     r_vol = float(row[vol_col[0]]) if vol_col else 0.0
                     recent.append(
                         MarketTick(
@@ -400,6 +418,6 @@ class YFinanceProvider:
 
 
 # Runtime protocol check
-assert isinstance(YFinanceProvider.__new__(YFinanceProvider), IDataProvider), (
-    "YFinanceProvider does not satisfy the IDataProvider Protocol."
-)
+assert isinstance(
+    YFinanceProvider.__new__(YFinanceProvider), IDataProvider
+), "YFinanceProvider does not satisfy the IDataProvider Protocol."

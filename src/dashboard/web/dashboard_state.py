@@ -41,6 +41,7 @@ _MAX_CHART_POINTS = 120  # 2 hours at 1-min cycles
 # Class-based API (used by unit tests and isolated callers)
 # ---------------------------------------------------------------------------
 
+
 class DashboardState:
     """Thread-safe, instance-level snapshot store."""
 
@@ -99,7 +100,9 @@ class DashboardState:
         with self._lock:
             return {
                 "started_at": self._started_at.isoformat(),
-                "last_update": self._last_update.isoformat() if self._last_update else None,
+                "last_update": (
+                    self._last_update.isoformat() if self._last_update else None
+                ),
                 "cycle": self._cycle,
                 "metrics": dict(self._metrics),
                 "positions": dict(self._positions),
@@ -154,7 +157,10 @@ _sse_subscribers: list[queue.SimpleQueue[str]] = []
 # Writers
 # ---------------------------------------------------------------------------
 
-def set_running(running: bool, capital: float = 100_000.0, symbols: list[str] | None = None) -> None:
+
+def set_running(
+    running: bool, capital: float = 100_000.0, symbols: list[str] | None = None
+) -> None:
     global _running, _initial_capital, _cash, _portfolio_value, _started_at
     with _lock:
         _running = running
@@ -199,14 +205,18 @@ def update_portfolio(
         _total_trades = total_trades
         _cycle = cycle
         if _started_at:
-            _uptime_seconds = int((datetime.now(timezone.utc) - _started_at).total_seconds())
+            _uptime_seconds = int(
+                (datetime.now(timezone.utc) - _started_at).total_seconds()
+            )
         # Append to chart history
-        _chart_history.append({
-            "ts": datetime.now(timezone.utc).strftime("%H:%M:%S"),
-            "cycle": cycle,
-            "portfolio_value": portfolio_value,
-            "total_pnl": total_pnl,
-        })
+        _chart_history.append(
+            {
+                "ts": datetime.now(timezone.utc).strftime("%H:%M:%S"),
+                "cycle": cycle,
+                "portfolio_value": portfolio_value,
+                "total_pnl": total_pnl,
+            }
+        )
     _broadcast_snapshot()
 
 
@@ -219,14 +229,16 @@ def push_trade(
     pnl: float | None = None,
 ) -> None:
     with _lock:
-        _trades.appendleft({
-            "ts": ts,
-            "symbol": symbol,
-            "action": action,
-            "quantity": quantity,
-            "fill_price": fill_price,
-            "pnl": pnl,
-        })
+        _trades.appendleft(
+            {
+                "ts": ts,
+                "symbol": symbol,
+                "action": action,
+                "quantity": quantity,
+                "fill_price": fill_price,
+                "pnl": pnl,
+            }
+        )
     _broadcast_snapshot()
 
 
@@ -247,12 +259,14 @@ def push_decision(
             items.pop(existing_idx)
             _decisions.clear()
             _decisions.extend(items)
-        _decisions.appendleft({
-            "symbol": symbol,
-            "action": action,
-            "confidence": confidence,
-            "rationale": rationale,
-        })
+        _decisions.appendleft(
+            {
+                "symbol": symbol,
+                "action": action,
+                "confidence": confidence,
+                "rationale": rationale,
+            }
+        )
     _broadcast_snapshot()
 
 
@@ -272,6 +286,7 @@ def push_news(symbol: str, text: str) -> None:
 # ---------------------------------------------------------------------------
 # Control
 # ---------------------------------------------------------------------------
+
 
 def pop_manual_tick() -> bool:
     global _manual_tick_pending
@@ -315,6 +330,7 @@ def get_strategy_mode() -> str:
 # Reader
 # ---------------------------------------------------------------------------
 
+
 def snapshot() -> dict[str, Any]:
     with _lock:
         return {
@@ -345,6 +361,7 @@ def snapshot() -> dict[str, Any]:
 # SSE helpers
 # ---------------------------------------------------------------------------
 
+
 def subscribe_sse() -> queue.SimpleQueue[str]:
     """Register a new SSE subscriber and return its queue."""
     q: queue.SimpleQueue[str] = queue.SimpleQueue()
@@ -364,6 +381,7 @@ def unsubscribe_sse(q: queue.SimpleQueue[str]) -> None:
 def _broadcast_snapshot() -> None:
     """Push the current snapshot to all SSE subscribers (non-blocking)."""
     import json
+
     msg = json.dumps({"type": "snapshot", "data": snapshot()})
     with _lock:
         subs = list(_sse_subscribers)

@@ -221,6 +221,7 @@ class PaperTradingRunner:
             # In live mode, wait 60s between day cycles to respect rate limits
             if self._live and day < self._run_days - 1:
                 import time as _t
+
                 _t.sleep(60)
 
         return self._report_gen.generate(label=f"paper-trading-{label}")
@@ -241,13 +242,15 @@ class PaperTradingRunner:
             ticks = []
             for i in range(5):
                 p = round(base * (1 + rng.uniform(-0.025, 0.025)), 4)
-                ticks.append(MarketTick(
-                    symbol=symbol,
-                    price=p,
-                    volume=tick.volume,
-                    timestamp=now - timedelta(minutes=5 - i),
-                    source=tick.source,
-                ))
+                ticks.append(
+                    MarketTick(
+                        symbol=symbol,
+                        price=p,
+                        volume=tick.volume,
+                        timestamp=now - timedelta(minutes=5 - i),
+                        source=tick.source,
+                    )
+                )
 
             # Update live price feed so orders fill at today's price
             self._price_feed[symbol.upper()] = round(base, 4)
@@ -294,6 +297,7 @@ class PaperTradingRunner:
                     return
 
                 from execution.models.order import Order
+
                 sell_order = Order(
                     symbol=sym_upper,
                     action="SELL",
@@ -321,6 +325,5 @@ class PaperTradingRunner:
 
         except Exception as exc:
             import logging
-            logging.getLogger(__name__).warning(
-                "Tick failed for %s: %s", symbol, exc
-            )
+
+            logging.getLogger(__name__).warning("Tick failed for %s: %s", symbol, exc)

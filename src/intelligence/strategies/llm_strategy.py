@@ -40,10 +40,10 @@ class LLMStrategy:
 
         # Single key (backward compatible)
         strategy = LLMStrategy(api_key="your_groq_key")
-        
+
         # Multiple keys (auto-rotation on rate limits)
         strategy = LLMStrategy(api_key=["key1", "key2", "key3"])
-        
+
         decision = strategy.evaluate(feature_vector)
     """
 
@@ -71,7 +71,7 @@ class LLMStrategy:
             keys = [api_key.strip()]
         else:
             keys = [k.strip() for k in api_key if k and k.strip()]
-        
+
         if not keys:
             raise ValueError("api_key must not be empty.")
 
@@ -84,10 +84,7 @@ class LLMStrategy:
         )
         self._model = model
         key_count = len(keys)
-        _log.info(
-            "LLMStrategy initialized — model: %s, keys: %d",
-            model, key_count
-        )
+        _log.info("LLMStrategy initialized — model: %s, keys: %d", model, key_count)
 
     # ------------------------------------------------------------------
     # IStrategy implementation
@@ -141,7 +138,8 @@ class LLMStrategy:
             # Graceful fallback to HOLD on any error
             _log.warning(
                 "LLM strategy error for %s: %s — falling back to HOLD",
-                feature_vector.symbol, exc
+                feature_vector.symbol,
+                exc,
             )
             return Decision(
                 symbol=feature_vector.symbol,
@@ -237,7 +235,9 @@ Respond with ONLY the JSON object. No markdown, no explanations."""
             conf = float(confidence)
             return max(0.0, min(1.0, conf))
         except (ValueError, TypeError):
-            _log.warning("Invalid confidence from LLM: %s — defaulting to 0.5", confidence)
+            _log.warning(
+                "Invalid confidence from LLM: %s — defaulting to 0.5", confidence
+            )
             return 0.5
 
     def _validate_rationale(self, rationale: str) -> str:
@@ -251,7 +251,7 @@ Respond with ONLY the JSON object. No markdown, no explanations."""
         """
         if not rationale or not str(rationale).strip():
             return "LLM provided no rationale"
-        
+
         rat = str(rationale).strip()
         if len(rat) > 2048:
             return rat[:2045] + "..."
@@ -259,6 +259,6 @@ Respond with ONLY the JSON object. No markdown, no explanations."""
 
 
 # Runtime protocol check
-assert isinstance(LLMStrategy(api_key="dummy_key_for_check"), IStrategy), (
-    "LLMStrategy does not satisfy the IStrategy Protocol."
-)
+assert isinstance(
+    LLMStrategy(api_key="dummy_key_for_check"), IStrategy
+), "LLMStrategy does not satisfy the IStrategy Protocol."

@@ -28,6 +28,7 @@ from execution.models.order import Order
 # Helpers / fixtures
 # ---------------------------------------------------------------------------
 
+
 def _make_bus() -> MagicMock:
     """Return a mock EventBus."""
     bus = MagicMock()
@@ -72,9 +73,15 @@ _symbols = st.text(
     alphabet=st.characters(whitelist_categories=("Lu",)), min_size=1, max_size=5
 ).filter(lambda s: s.strip() != "")
 _actions = st.sampled_from(["BUY", "SELL"])
-_quantities = st.floats(min_value=0.01, max_value=1_000.0, allow_nan=False, allow_infinity=False)
-_prices = st.floats(min_value=0.01, max_value=100_000.0, allow_nan=False, allow_infinity=False)
-_portfolio_values = st.floats(min_value=100.0, max_value=10_000_000.0, allow_nan=False, allow_infinity=False)
+_quantities = st.floats(
+    min_value=0.01, max_value=1_000.0, allow_nan=False, allow_infinity=False
+)
+_prices = st.floats(
+    min_value=0.01, max_value=100_000.0, allow_nan=False, allow_infinity=False
+)
+_portfolio_values = st.floats(
+    min_value=100.0, max_value=10_000_000.0, allow_nan=False, allow_infinity=False
+)
 
 
 # ---------------------------------------------------------------------------
@@ -83,6 +90,7 @@ _portfolio_values = st.floats(min_value=100.0, max_value=10_000_000.0, allow_nan
 # execute() produces a correctly populated FillEvent from API response
 # Validates: Requirements 6.2, 6.3
 # ---------------------------------------------------------------------------
+
 
 @given(
     symbol=_symbols,
@@ -132,7 +140,9 @@ def test_property_9_execute_fill_event_correctness(
     # Mock get_all_positions (no positions)
     mock_client.get_all_positions.return_value = []
 
-    with patch("execution.broker.alpaca_order_manager.TradingClient", return_value=mock_client):
+    with patch(
+        "execution.broker.alpaca_order_manager.TradingClient", return_value=mock_client
+    ):
         mgr = AlpacaOrderManager(
             bus=bus,
             initial_portfolio_value=portfolio_value,
@@ -160,6 +170,7 @@ def test_property_9_execute_fill_event_correctness(
 # Feature: telegram-alpaca-integration, Property 10: Orders exceeding 2%
 # Validates: Requirements 9.1
 # ---------------------------------------------------------------------------
+
 
 @given(
     quantity=_quantities,
@@ -219,9 +230,12 @@ def test_property_10_capital_limit_enforcement(
 # Validates: Requirements 9.2, 9.5
 # ---------------------------------------------------------------------------
 
+
 @given(
     portfolio_values=st.lists(
-        st.floats(min_value=1.0, max_value=1_000_000.0, allow_nan=False, allow_infinity=False),
+        st.floats(
+            min_value=1.0, max_value=1_000_000.0, allow_nan=False, allow_infinity=False
+        ),
         min_size=2,
         max_size=20,
     )
@@ -254,9 +268,7 @@ def test_property_11_drawdown_rejection_and_peak_tracking(
             expected_peak = value
 
         # Peak must always equal the running maximum
-        assert math.isclose(
-            mgr._peak_portfolio_value, expected_peak, rel_tol=1e-9
-        ), (
+        assert math.isclose(mgr._peak_portfolio_value, expected_peak, rel_tol=1e-9), (
             f"Peak mismatch: got {mgr._peak_portfolio_value}, "
             f"expected {expected_peak}"
         )
@@ -275,7 +287,9 @@ def test_property_11_drawdown_rejection_and_peak_tracking(
 
             # Verify breach event was published
             published_events = [call.args[0] for call in bus.publish.call_args_list]
-            breach_events = [e for e in published_events if e.event_type == "risk.drawdown_breach"]
+            breach_events = [
+                e for e in published_events if e.event_type == "risk.drawdown_breach"
+            ]
             assert len(breach_events) >= 1, (
                 f"Expected risk.drawdown_breach event, got: "
                 f"{[e.event_type for e in published_events]}"
@@ -301,6 +315,7 @@ def test_property_11_drawdown_rejection_and_peak_tracking(
 # Validates: Requirements 10.1, 10.3
 # ---------------------------------------------------------------------------
 
+
 def _make_mock_position(symbol: str, qty: float, market_value: float) -> MagicMock:
     pos = MagicMock()
     pos.symbol = symbol
@@ -311,15 +326,27 @@ def _make_mock_position(symbol: str, qty: float, market_value: float) -> MagicMo
 
 @given(
     positions=st.lists(
-        st.fixed_dictionaries({
-            "symbol": st.text(
-                alphabet=st.characters(whitelist_categories=("Lu",)),
-                min_size=1,
-                max_size=5,
-            ).filter(lambda s: s.strip() != ""),
-            "qty": st.floats(min_value=0.01, max_value=10_000.0, allow_nan=False, allow_infinity=False),
-            "market_value": st.floats(min_value=0.01, max_value=10_000_000.0, allow_nan=False, allow_infinity=False),
-        }),
+        st.fixed_dictionaries(
+            {
+                "symbol": st.text(
+                    alphabet=st.characters(whitelist_categories=("Lu",)),
+                    min_size=1,
+                    max_size=5,
+                ).filter(lambda s: s.strip() != ""),
+                "qty": st.floats(
+                    min_value=0.01,
+                    max_value=10_000.0,
+                    allow_nan=False,
+                    allow_infinity=False,
+                ),
+                "market_value": st.floats(
+                    min_value=0.01,
+                    max_value=10_000_000.0,
+                    allow_nan=False,
+                    allow_infinity=False,
+                ),
+            }
+        ),
         min_size=0,
         max_size=20,
     )
@@ -336,12 +363,13 @@ def test_property_12_get_positions_mapping(
     mock_client = MagicMock()
 
     mock_positions = [
-        _make_mock_position(p["symbol"], p["qty"], p["market_value"])
-        for p in positions
+        _make_mock_position(p["symbol"], p["qty"], p["market_value"]) for p in positions
     ]
     mock_client.get_all_positions.return_value = mock_positions
 
-    with patch("execution.broker.alpaca_order_manager.TradingClient", return_value=mock_client):
+    with patch(
+        "execution.broker.alpaca_order_manager.TradingClient", return_value=mock_client
+    ):
         mgr = AlpacaOrderManager(
             bus=bus,
             initial_portfolio_value=100_000.0,
@@ -360,9 +388,11 @@ def test_property_12_get_positions_mapping(
 
     for item in result:
         # Every dict must have exactly the three required keys
-        assert set(item.keys()) == {"symbol", "quantity", "market_value"}, (
-            f"Unexpected keys in position dict: {set(item.keys())}"
-        )
+        assert set(item.keys()) == {
+            "symbol",
+            "quantity",
+            "market_value",
+        }, f"Unexpected keys in position dict: {set(item.keys())}"
         # All values must be present
         assert isinstance(item["symbol"], str)
         assert isinstance(item["quantity"], float)

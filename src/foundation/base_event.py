@@ -36,9 +36,7 @@ class BaseEvent:
     event_type: str
 
     event_id: str = field(default_factory=lambda: str(uuid4()))
-    occurred_at: datetime = field(
-        default_factory=lambda: datetime.now(UTC)
-    )
+    occurred_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
     schema_version: str = "1.0"
 

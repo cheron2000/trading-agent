@@ -65,9 +65,7 @@ class HealthMonitor:
             ValueError: If ``liveness_window_seconds`` is zero or negative.
         """
         if liveness_window_seconds <= 0:
-            raise ValueError(
-                "liveness_window_seconds must be greater than zero."
-            )
+            raise ValueError("liveness_window_seconds must be greater than zero.")
 
         self._liveness_window = liveness_window_seconds
         self._event_bus = event_bus
@@ -178,6 +176,6 @@ class HealthMonitor:
 
 
 # Runtime protocol check
-assert isinstance(HealthMonitor(), IHealthMonitor), (
-    "HealthMonitor does not satisfy the IHealthMonitor Protocol."
-)
+assert isinstance(
+    HealthMonitor(), IHealthMonitor
+), "HealthMonitor does not satisfy the IHealthMonitor Protocol."

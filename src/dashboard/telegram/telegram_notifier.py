@@ -35,7 +35,13 @@ from typing import Any
 
 from telegram import Update
 from telegram.error import TelegramError
-from telegram.ext import Application, CommandHandler, ContextTypes, MessageHandler, filters
+from telegram.ext import (
+    Application,
+    CommandHandler,
+    ContextTypes,
+    MessageHandler,
+    filters,
+)
 
 from foundation.base_event import BaseEvent
 from communication.interfaces.i_event_bus import IEventBus
@@ -139,9 +145,7 @@ class TelegramNotifier:
         self._app.add_handler(CommandHandler("positions", self._cmd_positions))
         self._app.add_handler(CommandHandler("pnl", self._cmd_pnl))
         self._app.add_handler(CommandHandler("stop", self._cmd_stop))
-        self._app.add_handler(
-            MessageHandler(filters.COMMAND, self._cmd_unknown)
-        )
+        self._app.add_handler(MessageHandler(filters.COMMAND, self._cmd_unknown))
 
         # Subscribe to EventBus patterns
         self._subscriptions = [
@@ -175,9 +179,7 @@ class TelegramNotifier:
 
         # If the loop is running, schedule a graceful application stop
         if self._loop is not None and self._loop.is_running() and self._app is not None:
-            future = asyncio.run_coroutine_threadsafe(
-                self._shutdown_app(), self._loop
-            )
+            future = asyncio.run_coroutine_threadsafe(self._shutdown_app(), self._loop)
             try:
                 future.result(timeout=10)
             except Exception as exc:  # noqa: BLE001
@@ -296,9 +298,7 @@ class TelegramNotifier:
     # Telegram command handlers (async, called by python-telegram-bot)
     # ------------------------------------------------------------------
 
-    async def _cmd_status(
-        self, update: Update, ctx: ContextTypes.DEFAULT_TYPE
-    ) -> None:
+    async def _cmd_status(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
         """Reply to /status with portfolio value and cash."""
         text = self._format_status_reply()
         await update.message.reply_text(text)
@@ -310,24 +310,19 @@ class TelegramNotifier:
         text = self._format_positions_reply()
         await update.message.reply_text(text)
 
-    async def _cmd_pnl(
-        self, update: Update, ctx: ContextTypes.DEFAULT_TYPE
-    ) -> None:
+    async def _cmd_pnl(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
         """Reply to /pnl with realized P&L and total return."""
         text = self._format_pnl_reply()
         await update.message.reply_text(text)
 
-    async def _cmd_stop(
-        self, update: Update, ctx: ContextTypes.DEFAULT_TYPE
-    ) -> None:
+    async def _cmd_stop(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
         """Handle /stop: publish shutdown event then confirm to user."""
         try:
-            self._bus.publish(
-                BaseEvent(event_type="system.shutdown_requested")
-            )
+            self._bus.publish(BaseEvent(event_type="system.shutdown_requested"))
         except Exception as exc:  # noqa: BLE001
             self._log.error(
-                "Failed to publish system.shutdown_requested: %s", exc,
+                "Failed to publish system.shutdown_requested: %s",
+                exc,
                 exc_info=True,
             )
             # Do not send confirmation if publish failed
@@ -473,9 +468,7 @@ class TelegramNotifier:
             symbol = pos.get("symbol", "")
             quantity = pos.get("quantity", 0.0)
             entry_price = pos.get("entry_price", 0.0)
-            lines.append(
-                f"{symbol}: qty={quantity:.4f}, entry={entry_price:.2f}"
-            )
+            lines.append(f"{symbol}: qty={quantity:.4f}, entry={entry_price:.2f}")
         return "\n".join(lines)
 
     def _format_pnl_reply(self) -> str:

@@ -90,8 +90,7 @@ class EventBus:
             matching = [
                 handler
                 for sub, handler in self._subscriptions.values()
-                if sub.enabled
-                and fnmatch.fnmatch(event.event_type, sub.event_pattern)
+                if sub.enabled and fnmatch.fnmatch(event.event_type, sub.event_pattern)
             ]
 
         # Invoke handlers outside the lock to prevent deadlocks
@@ -170,6 +169,6 @@ class EventBus:
 
 
 # Runtime protocol check — ensures EventBus satisfies IEventBus.
-assert isinstance(EventBus(), IEventBus), (
-    "EventBus does not satisfy the IEventBus Protocol."
-)
+assert isinstance(
+    EventBus(), IEventBus
+), "EventBus does not satisfy the IEventBus Protocol."

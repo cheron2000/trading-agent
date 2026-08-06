@@ -56,11 +56,13 @@ class DecisionEvent(BaseEvent):
 
     def to_dict(self) -> dict[str, object]:
         base = BaseEvent.to_dict(self)
-        base.update({
-            "symbol": self.symbol,
-            "action": self.action,
-            "confidence": self.confidence,
-            "rationale": self.rationale,
-            "strategy_id": self.strategy_id,
-        })
+        base.update(
+            {
+                "symbol": self.symbol,
+                "action": self.action,
+                "confidence": self.confidence,
+                "rationale": self.rationale,
+                "strategy_id": self.strategy_id,
+            }
+        )
         return base

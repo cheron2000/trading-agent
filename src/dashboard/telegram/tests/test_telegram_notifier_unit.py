@@ -13,6 +13,7 @@ All tests mock python-telegram-bot Application and the EventBus to avoid
 real network calls. The module under test is imported once at module level
 so that patch() targets resolve correctly.
 """
+
 from __future__ import annotations
 
 import sys
@@ -46,6 +47,7 @@ from dashboard.telegram.telegram_notifier import TelegramNotifier  # noqa: E402
 # from frozen BaseEvent dataclasses.
 # ---------------------------------------------------------------------------
 
+
 class _EventStub:
     """Lightweight stand-in for any event type used in tests.
 
@@ -65,6 +67,7 @@ class _EventStub:
 # Helpers — lightweight fake EventBus
 # ---------------------------------------------------------------------------
 
+
 class _FakeBus:
     """Minimal in-memory EventBus for unit tests."""
 
@@ -74,15 +77,14 @@ class _FakeBus:
 
     def subscribe(self, pattern: str, handler: Callable) -> Subscription:
         from uuid import uuid4
+
         sub = Subscription(subscriber_id=str(uuid4()), event_pattern=pattern)
         self._handlers.setdefault(pattern, []).append(handler)
         self._subscriptions.append(sub)
         return sub
 
     def unsubscribe(self, subscription: Subscription) -> None:
-        self._subscriptions = [
-            s for s in self._subscriptions if s != subscription
-        ]
+        self._subscriptions = [s for s in self._subscriptions if s != subscription]
 
     def publish(self, event: BaseEvent) -> None:
         handlers = self._handlers.get(event.event_type, [])
@@ -112,6 +114,7 @@ def _build_notifier(bus=None, notify_hold: bool = False, **kwargs) -> TelegramNo
 # ---------------------------------------------------------------------------
 # 1. Constructor validation
 # ---------------------------------------------------------------------------
+
 
 class TestConstructorValidation(unittest.TestCase):
 
@@ -144,6 +147,7 @@ class TestConstructorValidation(unittest.TestCase):
 # 2. start() / stop() subscription management
 # ---------------------------------------------------------------------------
 
+
 class TestSubscriptionManagement(unittest.TestCase):
 
     def _notifier_with_mock_thread(self):
@@ -158,7 +162,9 @@ class TestSubscriptionManagement(unittest.TestCase):
             n._app = None  # reset to allow start() to rebuild
 
             with patch.object(_tn_module, "Application") as MockApp:
-                MockApp.builder.return_value.token.return_value.build.return_value = mock_app
+                MockApp.builder.return_value.token.return_value.build.return_value = (
+                    mock_app
+                )
                 n.start()
         return n, bus, mock_thread
 
@@ -168,7 +174,7 @@ class TestSubscriptionManagement(unittest.TestCase):
 
     def test_stop_unregisters_all_subscriptions(self):
         n, bus, _ = self._notifier_with_mock_thread()
-        n._loop = None   # prevents run_coroutine_threadsafe from being called
+        n._loop = None  # prevents run_coroutine_threadsafe from being called
         n._thread = None
         n.stop()
         self.assertEqual(bus.subscription_count, 0)
@@ -177,6 +183,7 @@ class TestSubscriptionManagement(unittest.TestCase):
 # ---------------------------------------------------------------------------
 # 3. Message formatters
 # ---------------------------------------------------------------------------
+
 
 class TestFormatFillMessage(unittest.TestCase):
 
@@ -361,6 +368,7 @@ class TestFormatPnlReply(unittest.TestCase):
 # 4. EventBus handler behaviour
 # ---------------------------------------------------------------------------
 
+
 class TestOnDecisionHoldSuppression(unittest.TestCase):
 
     def _hold_event(self):
@@ -417,9 +425,7 @@ class TestOnPortfolioUpdatesCache(unittest.TestCase):
             cash=10000.0,
             realized_pnl=500.0,
             total_return_pct=0.01,
-            positions=(
-                {"symbol": "AAPL", "quantity": 10.0, "entry_price": 150.0},
-            ),
+            positions=({"symbol": "AAPL", "quantity": 10.0, "entry_price": 150.0},),
         )
         n._on_portfolio(ev)
         self.assertAlmostEqual(n._portfolio_value, 50000.0)
@@ -453,6 +459,7 @@ class TestOnSessionEnd(unittest.TestCase):
 # ---------------------------------------------------------------------------
 # 5. Async command handler tests
 # ---------------------------------------------------------------------------
+
 
 class TestAsyncCommandHandlers(unittest.IsolatedAsyncioTestCase):
     """Test async Telegram command handlers using IsolatedAsyncioTestCase."""
@@ -502,14 +509,18 @@ class TestAsyncCommandHandlers(unittest.IsolatedAsyncioTestCase):
         call_order: list = []
 
         original_publish = bus.publish
+
         def tracked_publish(ev):
             call_order.append(("publish", ev.event_type))
             return original_publish(ev)
+
         bus.publish = tracked_publish
 
         update = self._make_update()
+
         async def tracked_reply_text(text):
             call_order.append(("reply", text))
+
         update.message.reply_text = AsyncMock(side_effect=tracked_reply_text)
 
         await n._cmd_stop(update, MagicMock())
@@ -533,6 +544,7 @@ class TestAsyncCommandHandlers(unittest.IsolatedAsyncioTestCase):
 
         def failing_publish(ev):
             raise RuntimeError("bus error")
+
         bus.publish = failing_publish
 
         update = self._make_update()
@@ -552,6 +564,7 @@ class TestAsyncCommandHandlers(unittest.IsolatedAsyncioTestCase):
 # 6. _safe_send — WARNING log on TelegramError
 # ---------------------------------------------------------------------------
 
+
 class TestSafeSend(unittest.IsolatedAsyncioTestCase):
 
     def _make_notifier_with_mock_bot(self, bot_side_effect=None):
@@ -568,6 +581,7 @@ class TestSafeSend(unittest.IsolatedAsyncioTestCase):
 
     async def test_telegram_error_logs_warning(self):
         from telegram.error import TelegramError
+
         n, _ = self._make_notifier_with_mock_bot(
             bot_side_effect=TelegramError("network error")
         )
@@ -580,9 +594,7 @@ class TestSafeSend(unittest.IsolatedAsyncioTestCase):
     async def test_successful_send_calls_bot(self):
         n, mock_bot = self._make_notifier_with_mock_bot()
         await n._safe_send("hello")
-        mock_bot.send_message.assert_awaited_once_with(
-            chat_id="123456", text="hello"
-        )
+        mock_bot.send_message.assert_awaited_once_with(chat_id="123456", text="hello")
 
 
 if __name__ == "__main__":

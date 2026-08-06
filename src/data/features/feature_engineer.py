@@ -137,9 +137,7 @@ class FeatureEngineer:
         price_mean = statistics.mean(prices)
         price_std = statistics.pstdev(prices) if n >= 2 else 0.0
         price_change_pct = (
-            (prices[-1] - prices[0]) / prices[0] * 100.0
-            if prices[0] != 0
-            else 0.0
+            (prices[-1] - prices[0]) / prices[0] * 100.0 if prices[0] != 0 else 0.0
         )
         volume_mean = statistics.mean(volumes)
         volume_total = sum(volumes)
@@ -160,7 +158,11 @@ class FeatureEngineer:
         bb_std = statistics.pstdev(bb_window) if len(bb_window) >= 2 else 0.0
         bb_upper = bb_middle + 2 * bb_std
         bb_lower = bb_middle - 2 * bb_std
-        bb_position = (price_latest - bb_lower) / (bb_upper - bb_lower) if (bb_upper - bb_lower) > 0 else 0.5
+        bb_position = (
+            (price_latest - bb_lower) / (bb_upper - bb_lower)
+            if (bb_upper - bb_lower) > 0
+            else 0.5
+        )
 
         # Volume Ratio
         volume_ratio = volumes[-1] / volume_mean if volume_mean > 0 else 1.0
@@ -191,7 +193,11 @@ class FeatureEngineer:
         elif atr_ratio >= 1.25 or volume_ratio > 1.8:
             regime_label = "volatile"
             regime_confidence = 0.85
-        elif (abs(price_latest - vwap) / vwap < 0.01) and (35 <= rsi <= 65) and ((bb_upper - bb_lower) / bb_middle < 0.04 if bb_middle > 0 else True):
+        elif (
+            (abs(price_latest - vwap) / vwap < 0.01)
+            and (35 <= rsi <= 65)
+            and ((bb_upper - bb_lower) / bb_middle < 0.04 if bb_middle > 0 else True)
+        ):
             regime_label = "ranging"
             regime_confidence = 0.80
         else:
@@ -229,13 +235,13 @@ class FeatureEngineer:
     @staticmethod
     def _compute_atr(prices: list[float], period: int = 14) -> float:
         """Compute Average True Range (ATR) as a volatility measure.
-        
+
         For simplicity with single price series (no OHLC), True Range is
         approximated as abs(prices[i] - prices[i-1]).
         """
         if len(prices) < 2:
             return 0.0
-        true_ranges = [abs(prices[i] - prices[i-1]) for i in range(1, len(prices))]
+        true_ranges = [abs(prices[i] - prices[i - 1]) for i in range(1, len(prices))]
         recent = true_ranges[-period:] if len(true_ranges) >= period else true_ranges
         return sum(recent) / len(recent) if recent else 0.0
 
@@ -243,7 +249,7 @@ class FeatureEngineer:
     def _compute_rsi(prices: list[float], period: int = 14) -> float:
         if len(prices) < period + 1:
             return 50.0
-        changes = [prices[i] - prices[i-1] for i in range(1, len(prices))]
+        changes = [prices[i] - prices[i - 1] for i in range(1, len(prices))]
         gains = [max(c, 0.0) for c in changes[-period:]]
         losses = [abs(min(c, 0.0)) for c in changes[-period:]]
         avg_gain = sum(gains) / period

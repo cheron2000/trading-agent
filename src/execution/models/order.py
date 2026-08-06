@@ -40,9 +40,7 @@ class Order:
     strategy_id: str
     order_id: str = field(default_factory=lambda: str(uuid4()))
     limit_price: float | None = None
-    timestamp: datetime = field(
-        default_factory=lambda: datetime.now(timezone.utc)
-    )
+    timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
 
     _VALID_ACTIONS: ClassVar[frozenset[str]] = frozenset({"BUY", "SELL"})
     _VALID_ORDER_TYPES: ClassVar[frozenset[str]] = frozenset({"MARKET", "LIMIT"})

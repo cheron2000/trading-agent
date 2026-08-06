@@ -111,9 +111,7 @@ class PluginManifest:
             raise ValueError("description must not be empty.")
 
         if len(self.description) > self._MAX_DESCRIPTION_LENGTH:
-            raise ValueError(
-                "description exceeds maximum length."
-            )
+            raise ValueError("description exceeds maximum length.")
 
         self._validate_collection(
             "dependencies",
@@ -149,9 +147,7 @@ class PluginManifest:
             self.configuration_schema is not None
             and not self.configuration_schema.strip()
         ):
-            raise ValueError(
-                "configuration_schema cannot be empty."
-            )
+            raise ValueError("configuration_schema cannot be empty.")
 
     @classmethod
     def _validate_required(
@@ -164,9 +160,7 @@ class PluginManifest:
             raise ValueError(f"{field_name} must not be empty.")
 
         if len(value) > cls._MAX_TEXT_LENGTH:
-            raise ValueError(
-                f"{field_name} exceeds maximum length."
-            )
+            raise ValueError(f"{field_name} exceeds maximum length.")
 
     @staticmethod
     def _validate_collection(
@@ -175,15 +169,11 @@ class PluginManifest:
     ) -> None:
         """Validate an immutable string collection."""
         if len(values) != len(set(values)):
-            raise ValueError(
-                f"{field_name} contains duplicate values."
-            )
+            raise ValueError(f"{field_name} contains duplicate values.")
 
         for item in values:
             if not item.strip():
-                raise ValueError(
-                    f"{field_name} contains an empty value."
-                )
+                raise ValueError(f"{field_name} contains an empty value.")
 
     @property
     def has_dependencies(self) -> bool:
@@ -215,20 +205,12 @@ class PluginManifest:
             "api_version": self.api_version,
             "entry_point": self.entry_point,
             "dependencies": list(self.dependencies),
-            "optional_dependencies": list(
-                self.optional_dependencies
-            ),
+            "optional_dependencies": list(self.optional_dependencies),
             "capabilities": list(self.capabilities),
-            "event_subscriptions": list(
-                self.event_subscriptions
-            ),
-            "event_publications": list(
-                self.event_publications
-            ),
+            "event_subscriptions": list(self.event_subscriptions),
+            "event_publications": list(self.event_publications),
             "tags": list(self.tags),
-            "configuration_schema": (
-                self.configuration_schema
-            ),
+            "configuration_schema": (self.configuration_schema),
         }
 
     def __str__(self) -> str:

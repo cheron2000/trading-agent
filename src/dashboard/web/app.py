@@ -95,7 +95,7 @@ def create_app(state: DashboardState | None = None) -> Flask:
                         yield f"data: {msg}\n\n"
                     except Exception:
                         # Heartbeat to keep the connection alive
-                        yield "data: {\"type\":\"heartbeat\"}\n\n"
+                        yield 'data: {"type":"heartbeat"}\n\n'
             finally:
                 _ds.unsubscribe_sse(q)
 

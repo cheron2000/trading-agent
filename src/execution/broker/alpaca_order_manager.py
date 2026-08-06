@@ -34,7 +34,7 @@ from foundation.base_event import BaseEvent
 _LOG = logging.getLogger(__name__)
 
 # Risk constants
-_CAPITAL_LIMIT_FRACTION: float = 0.02   # 2 % per-trade cap
+_CAPITAL_LIMIT_FRACTION: float = 0.02  # 2 % per-trade cap
 _DRAWDOWN_LIMIT_FRACTION: float = 0.10  # 10 % session drawdown stop
 
 # Fill-polling settings

@@ -67,6 +67,7 @@ class NewsAggregator:
         if finnhub_key and finnhub_key.strip():
             try:
                 from data.providers.finnhub_news_provider import FinnhubNewsProvider
+
                 self._finnhub = FinnhubNewsProvider(
                     api_key=finnhub_key,
                     max_articles=max_articles,
@@ -80,18 +81,22 @@ class NewsAggregator:
         if av_keys and any(av_keys):
             try:
                 from data.providers.av_news_provider import AVNewsProvider
+
                 self._av = AVNewsProvider(
                     api_keys=av_keys,
                     max_articles=max_articles,
                     cache_ttl=cache_ttl,
                 )
-                _log.info("NewsAggregator: AV News provider ready (%d keys).", len(av_keys))
+                _log.info(
+                    "NewsAggregator: AV News provider ready (%d keys).", len(av_keys)
+                )
             except Exception as exc:
                 _log.warning("NewsAggregator: AV init failed: %s", exc)
 
         # Always init Yahoo Finance (no key needed)
         try:
             from data.providers.yf_news_provider import YFNewsProvider
+
             self._yf = YFNewsProvider(
                 max_articles=max_articles,
                 cache_ttl=cache_ttl,
@@ -163,9 +168,15 @@ class NewsAggregator:
     def status(self) -> dict:
         """Return health status of all news sources."""
         return {
-            "finnhub":      "ready" if self._finnhub and "finnhub" not in self._degraded
-                            else ("degraded" if self._finnhub else "not_configured"),
-            "alphavantage": "ready" if self._av and "av" not in self._degraded
-                            else ("degraded" if self._av else "not_configured"),
-            "yahoo":        "ready" if self._yf else "not_configured",
+            "finnhub": (
+                "ready"
+                if self._finnhub and "finnhub" not in self._degraded
+                else ("degraded" if self._finnhub else "not_configured")
+            ),
+            "alphavantage": (
+                "ready"
+                if self._av and "av" not in self._degraded
+                else ("degraded" if self._av else "not_configured")
+            ),
+            "yahoo": "ready" if self._yf else "not_configured",
         }

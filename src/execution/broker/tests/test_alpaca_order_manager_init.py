@@ -30,6 +30,7 @@ def _make_bus() -> MagicMock:
 # Requirement: 8.2
 # ---------------------------------------------------------------------------
 
+
 def test_init_live_trading_requires_paper_validation_complete_flag():
     """Test that live_trading=True without paper_validation_complete=True raises ValueError."""
     bus = _make_bus()
@@ -55,6 +56,7 @@ def test_init_live_trading_requires_paper_validation_complete_flag():
 # Test: live_trading=True, paper_validation_complete omitted → ValueError
 # Requirement: 8.3
 # ---------------------------------------------------------------------------
+
 
 def test_init_live_trading_requires_paper_validation_complete_when_omitted():
     """Test that live_trading=True without paper_validation_complete parameter raises ValueError."""
@@ -82,12 +84,15 @@ def test_init_live_trading_requires_paper_validation_complete_when_omitted():
 # Requirement: 12.2, 8.1
 # ---------------------------------------------------------------------------
 
+
 def test_init_paper_mode_creates_client_with_paper_true():
     """Test that paper mode (default) instantiates TradingClient with paper=True."""
     bus = _make_bus()
 
     mock_client = MagicMock()
-    with patch("execution.broker.alpaca_order_manager.TradingClient", return_value=mock_client) as mock_trading_client_class:
+    with patch(
+        "execution.broker.alpaca_order_manager.TradingClient", return_value=mock_client
+    ) as mock_trading_client_class:
         mgr = AlpacaOrderManager(
             bus=bus,
             initial_portfolio_value=100_000.0,
@@ -131,12 +136,15 @@ def test_init_paper_mode_logs_info_with_url():
 # Requirement: 12.1, 12.4
 # ---------------------------------------------------------------------------
 
+
 def test_init_live_mode_creates_client_with_paper_false():
     """Test that live mode instantiates TradingClient with paper=False."""
     bus = _make_bus()
 
     mock_client = MagicMock()
-    with patch("execution.broker.alpaca_order_manager.TradingClient", return_value=mock_client) as mock_trading_client_class:
+    with patch(
+        "execution.broker.alpaca_order_manager.TradingClient", return_value=mock_client
+    ) as mock_trading_client_class:
         mgr = AlpacaOrderManager(
             bus=bus,
             initial_portfolio_value=100_000.0,
@@ -182,6 +190,7 @@ def test_init_live_mode_logs_warning():
 # Requirement: 12.3
 # ---------------------------------------------------------------------------
 
+
 def test_init_sets_peak_portfolio_value():
     """Test that __init__ sets self._peak_portfolio_value to initial_portfolio_value."""
     bus = _make_bus()
@@ -202,6 +211,7 @@ def test_init_sets_peak_portfolio_value():
 # Test: Parameters are correctly stored
 # Requirement: 7.1
 # ---------------------------------------------------------------------------
+
 
 def test_init_stores_bus_and_live_trading_flag():
     """Test that __init__ stores the bus and live_trading flag correctly."""

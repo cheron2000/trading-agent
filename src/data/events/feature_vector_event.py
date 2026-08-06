@@ -58,9 +58,7 @@ class FeatureVectorEvent(BaseEvent):
             {
                 "symbol": self.symbol,
                 "timestamp": (
-                    self.timestamp.isoformat()
-                    if self.timestamp is not None
-                    else None
+                    self.timestamp.isoformat() if self.timestamp is not None else None
                 ),
                 "features": dict(self.features) if self.features else {},
                 "source_quality": self.source_quality,

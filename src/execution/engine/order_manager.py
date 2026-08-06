@@ -71,9 +71,7 @@ class OrderManager:
         """
         symbol = order.symbol.upper()
         if symbol not in self._price_feed:
-            raise ValueError(
-                f"Symbol '{symbol}' not in price feed — cannot fill."
-            )
+            raise ValueError(f"Symbol '{symbol}' not in price feed — cannot fill.")
 
         fill_price = self._price_feed[symbol]
         now = datetime.now(timezone.utc)

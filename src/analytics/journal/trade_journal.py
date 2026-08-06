@@ -116,11 +116,7 @@ class TradeJournal:
             raise ValueError("decision must not be None.")
 
         sequence = len(self._entries) + 1
-        prev_hash = (
-            self._entries[-1].entry_hash
-            if self._entries
-            else self.GENESIS_HASH
-        )
+        prev_hash = self._entries[-1].entry_hash if self._entries else self.GENESIS_HASH
         now = datetime.now(timezone.utc)
 
         entry_hash = self._compute_hash(

@@ -75,9 +75,7 @@ class SimpleRuleStrategy:
             raise ValueError("feature_vector must not be None.")
 
         if "price_change_pct" not in feature_vector.features:
-            raise ValueError(
-                "feature_vector must contain 'price_change_pct'."
-            )
+            raise ValueError("feature_vector must contain 'price_change_pct'.")
 
         pct = feature_vector.features["price_change_pct"]
         action: Literal["BUY", "SELL", "HOLD"]
@@ -98,9 +96,7 @@ class SimpleRuleStrategy:
             )
         else:
             action = "HOLD"
-            confidence = max(
-                0.0, 1.0 - abs(pct) / self._threshold
-            )
+            confidence = max(0.0, 1.0 - abs(pct) / self._threshold)
             rationale = (
                 f"price_change_pct={pct:.2f}% within threshold "
                 f"±{self._threshold}% — no signal."
@@ -116,6 +112,6 @@ class SimpleRuleStrategy:
 
 
 # Runtime protocol check
-assert isinstance(SimpleRuleStrategy(), IStrategy), (
-    "SimpleRuleStrategy does not satisfy the IStrategy Protocol."
-)
+assert isinstance(
+    SimpleRuleStrategy(), IStrategy
+), "SimpleRuleStrategy does not satisfy the IStrategy Protocol."

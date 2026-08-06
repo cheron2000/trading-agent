@@ -31,8 +31,8 @@ class _TokenBucket:
 
     def __init__(self, capacity: float, rate: float) -> None:
         self._capacity = capacity
-        self._rate = rate          # tokens per second
-        self._tokens = capacity    # start full
+        self._rate = rate  # tokens per second
+        self._tokens = capacity  # start full
         self._last_refill = time.monotonic()
         self._lock = threading.Lock()
 
@@ -129,9 +129,7 @@ class RateLimiter:
 
         cap = capacity if capacity is not None else rate * 2
         with self._lock:
-            self._buckets[prefix.strip()] = _TokenBucket(
-                capacity=cap, rate=rate
-            )
+            self._buckets[prefix.strip()] = _TokenBucket(capacity=cap, rate=rate)
 
     # ------------------------------------------------------------------
     # Runtime check

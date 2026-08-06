@@ -30,13 +30,13 @@ _log = logging.getLogger(__name__)
 
 # Available Groq models (free tier)
 GROQ_MODELS = {
-    "llama3-8b":   "llama-3.1-8b-instant",    # fastest, recommended
-    "llama3-70b":  "llama-3.3-70b-versatile",  # smarter, slower
-    "mixtral":     "mixtral-8x7b-32768",        # good reasoning
+    "llama3-8b": "llama-3.1-8b-instant",  # fastest, recommended
+    "llama3-70b": "llama-3.3-70b-versatile",  # smarter, slower
+    "mixtral": "mixtral-8x7b-32768",  # good reasoning
 }
 
 _DEFAULT_MODEL = "llama3-8b"
-_GROQ_API_URL  = "https://api.groq.com/openai/v1/chat/completions"
+_GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
 
 
 class GroqClient:
@@ -48,10 +48,10 @@ class GroqClient:
 
         # Single key (backward compatible)
         client = GroqClient(api_key="your_groq_key")
-        
+
         # Multiple keys (auto-rotation on 429)
         client = GroqClient(api_key=["key1", "key2", "key3"])
-        
+
         response = client.complete("Analyze this market data...")
     """
 
@@ -82,7 +82,7 @@ class GroqClient:
             keys = [api_key.strip()]
         else:
             keys = [k.strip() for k in api_key if k and k.strip()]
-        
+
         if not keys:
             raise ValueError("api_key must not be empty.")
 
@@ -95,7 +95,8 @@ class GroqClient:
 
         _log.info(
             "GroqClient initialized — model: %s, keys: %d",
-            self._model, len(self._api_keys)
+            self._model,
+            len(self._api_keys),
         )
 
     # ------------------------------------------------------------------
@@ -109,22 +110,22 @@ class GroqClient:
 
     def _rotate_key(self) -> bool:
         """Rotate to the next API key.
-        
+
         Returns:
             True if rotated to a new key, False if all keys exhausted.
         """
         if len(self._api_keys) <= 1:
             return False
-        
+
         old_index = self._current_key_index
         self._current_key_index = (self._current_key_index + 1) % len(self._api_keys)
-        
+
         # Check if we've cycled through all keys
         if self._current_key_index != old_index:
             _log.info(
                 "Rotated to API key %d/%d",
                 self._current_key_index + 1,
-                len(self._api_keys)
+                len(self._api_keys),
             )
             return True
         return False
@@ -164,11 +165,11 @@ class GroqClient:
         }
 
         body = json.dumps(payload).encode("utf-8")
-        
+
         # Track keys tried to avoid infinite loops
         keys_tried = 0
         max_keys_to_try = len(self._api_keys)
-        
+
         for attempt in range(3):
             # Build request with current key
             req = Request(
@@ -182,7 +183,7 @@ class GroqClient:
                 },
                 method="POST",
             )
-            
+
             try:
                 # Use a direct opener that bypasses any system proxy (Tor)
                 direct_opener = urllib.request.build_opener(
@@ -203,15 +204,16 @@ class GroqClient:
                             "Rate limit hit — trying key %d/%d (attempt %d/3)",
                             self._current_key_index + 1,
                             len(self._api_keys),
-                            attempt + 1
+                            attempt + 1,
                         )
                         continue  # Retry immediately with new key
-                    
+
                     # All keys exhausted, wait and retry
-                    wait = 2.0 ** attempt * 10  # 10s, 20s, 40s
+                    wait = 2.0**attempt * 10  # 10s, 20s, 40s
                     _log.warning(
                         "Groq rate limit (429) on all keys — waiting %.0fs (attempt %d/3)",
-                        wait, attempt + 1,
+                        wait,
+                        attempt + 1,
                     )
                     time.sleep(wait)
                 elif exc.code in (401, 403):
@@ -226,8 +228,10 @@ class GroqClient:
 
             except URLError as exc:
                 if attempt < 2:
-                    _log.warning("Groq network error (attempt %d/3): %s", attempt + 1, exc)
-                    time.sleep(2.0 ** attempt)
+                    _log.warning(
+                        "Groq network error (attempt %d/3): %s", attempt + 1, exc
+                    )
+                    time.sleep(2.0**attempt)
                 else:
                     raise RuntimeError(
                         f"Groq API unreachable after 3 attempts: {exc}"

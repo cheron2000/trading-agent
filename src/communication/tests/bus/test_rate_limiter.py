@@ -17,6 +17,7 @@ from communication.bus.rate_limiter import RateLimiter, RateLimitExceeded
 # RateLimiter construction
 # ---------------------------------------------------------------------------
 
+
 class TestRateLimiterInit:
 
     def test_default_construction(self) -> None:
@@ -46,6 +47,7 @@ class TestRateLimiterInit:
 # ---------------------------------------------------------------------------
 # set_limit()
 # ---------------------------------------------------------------------------
+
 
 class TestSetLimit:
 
@@ -78,6 +80,7 @@ class TestSetLimit:
 # ---------------------------------------------------------------------------
 # check()
 # ---------------------------------------------------------------------------
+
 
 class TestCheck:
 
@@ -131,6 +134,7 @@ class TestCheck:
 # ---------------------------------------------------------------------------
 # EventBus + RateLimiter integration
 # ---------------------------------------------------------------------------
+
 
 class TestEventBusRateLimiting:
 

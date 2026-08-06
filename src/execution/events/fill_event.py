@@ -27,9 +27,7 @@ class FillEvent(BaseEvent):
     action: Literal["BUY", "SELL"] = "BUY"
     quantity: float = 0.0
     fill_price: float = 0.0
-    timestamp: datetime = field(
-        default_factory=lambda: datetime.now(timezone.utc)
-    )
+    timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
 
     def __post_init__(self) -> None:
         if not self.order_id or not self.order_id.strip():
@@ -48,12 +46,14 @@ class FillEvent(BaseEvent):
         ts = self.timestamp
         if ts.tzinfo is None:
             ts = ts.replace(tzinfo=timezone.utc)
-        base.update({
-            "order_id": self.order_id,
-            "symbol": self.symbol,
-            "action": self.action,
-            "quantity": self.quantity,
-            "fill_price": self.fill_price,
-            "fill_timestamp": ts.isoformat(),
-        })
+        base.update(
+            {
+                "order_id": self.order_id,
+                "symbol": self.symbol,
+                "action": self.action,
+                "quantity": self.quantity,
+                "fill_price": self.fill_price,
+                "fill_timestamp": ts.isoformat(),
+            }
+        )
         return base

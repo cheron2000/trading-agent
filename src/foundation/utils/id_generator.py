@@ -105,9 +105,7 @@ def require_valid_uuid(value: str) -> None:
             If the UUID is invalid.
     """
     if not is_valid_uuid(value):
-        raise ValidationError(
-            f"Invalid UUID: '{value}'."
-        )
+        raise ValidationError(f"Invalid UUID: '{value}'.")
 
 
 def normalize_uuid(value: str) -> str:
@@ -127,9 +125,7 @@ def normalize_uuid(value: str) -> str:
     try:
         return str(UUID(value))
     except (ValueError, TypeError) as exc:
-        raise ValidationError(
-            f"Invalid UUID: '{value}'."
-        ) from exc
+        raise ValidationError(f"Invalid UUID: '{value}'.") from exc
 
 
 def generate_prefixed_id(prefix: str) -> str:

@@ -22,6 +22,7 @@ from foundation.exceptions import ValidationError
 # Safe path resolution — prevents CWE-22 path traversal
 # ============================================================================
 
+
 def _safe_resolve(base: Path, user_path: str | Path) -> Path:
     """Resolve user_path relative to base, blocking traversal attempts.
 
@@ -41,6 +42,7 @@ def _safe_resolve(base: Path, user_path: str | Path) -> Path:
             f"Path traversal blocked: {user_path!r} escapes base {base!r}."
         )
     return resolved
+
 
 # ============================================================================
 # Regular Expressions
@@ -128,9 +130,7 @@ def validate_identifier(identifier: str) -> bool:
     require_not_empty(identifier, "identifier")
 
     if _IDENTIFIER_PATTERN.fullmatch(identifier) is None:
-        raise ValidationError(
-            f"Invalid identifier: '{identifier}'."
-        )
+        raise ValidationError(f"Invalid identifier: '{identifier}'.")
 
     return True
 
@@ -155,9 +155,7 @@ def validate_event_name(event_name: str) -> bool:
     require_not_empty(event_name, "event_name")
 
     if _EVENT_NAME_PATTERN.fullmatch(event_name) is None:
-        raise ValidationError(
-            f"Invalid event name: '{event_name}'."
-        )
+        raise ValidationError(f"Invalid event name: '{event_name}'.")
 
     return True
 
@@ -179,9 +177,7 @@ def validate_uuid(value: str) -> bool:
     try:
         UUID(value)
     except ValueError as exc:
-        raise ValidationError(
-            f"Invalid UUID: '{value}'."
-        ) from exc
+        raise ValidationError(f"Invalid UUID: '{value}'.") from exc
 
     return True
 
@@ -201,9 +197,7 @@ def validate_semantic_version(version: str) -> bool:
     require_not_empty(version, "version")
 
     if _SEMVER_PATTERN.fullmatch(version) is None:
-        raise ValidationError(
-            f"Invalid semantic version: '{version}'."
-        )
+        raise ValidationError(f"Invalid semantic version: '{version}'.")
 
     return True
 
@@ -226,9 +220,7 @@ def validate_file_exists(path: str | Path) -> bool:
         raise ValidationError(f"Invalid file path: {path}") from exc
 
     if not file_path.is_file():
-        raise ValidationError(
-            f"File does not exist: {file_path}"
-        )
+        raise ValidationError(f"File does not exist: {file_path}")
 
     return True
 
@@ -244,6 +236,4 @@ def require_unique(values: Collection[Any], name: str) -> None:
         ValidationError: If duplicates are found.
     """
     if len(values) != len(set(values)):
-        raise ValidationError(
-            f"'{name}' contains duplicate values."
-        )
+        raise ValidationError(f"'{name}' contains duplicate values.")

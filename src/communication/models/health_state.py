@@ -110,9 +110,7 @@ class HealthState(StrEnum):
         try:
             return cls(value)
         except ValueError as exc:
-            raise ValueError(
-                f"Unsupported health state: {value}"
-            ) from exc
+            raise ValueError(f"Unsupported health state: {value}") from exc
 
     def __str__(self) -> str:
         """Return the canonical serialized representation.

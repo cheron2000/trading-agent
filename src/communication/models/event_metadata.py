@@ -45,9 +45,7 @@ class EventMetadata:
     retry_count: int = 0
     target_component: str | None = None
     transport_id: str | None = None
-    created_at: datetime = field(
-        default_factory=lambda: datetime.now(timezone.utc)
-    )
+    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
 
     # -----------------------------
     # Validation constants

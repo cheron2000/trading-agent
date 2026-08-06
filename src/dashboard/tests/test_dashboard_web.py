@@ -108,7 +108,10 @@ class TestDashboardStateEvents:
         for i in range(5):
             state.record_event(_decision(symbol=f"S{i}"))
         snap = state.snapshot()
-        assert snap["recent_events"][0]["event_id"] == snap["latest_decisions"]["S4"]["event_id"]
+        assert (
+            snap["recent_events"][0]["event_id"]
+            == snap["latest_decisions"]["S4"]["event_id"]
+        )
 
 
 class TestDashboardStateDirectPush:

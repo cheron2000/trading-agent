@@ -115,9 +115,7 @@ class EventPriority(IntEnum):
         try:
             return cls(value)
         except ValueError as exc:
-            raise ValueError(
-                f"Unsupported event priority: {value}"
-            ) from exc
+            raise ValueError(f"Unsupported event priority: {value}") from exc
 
     def __str__(self) -> str:
         """Return the canonical lowercase name.
