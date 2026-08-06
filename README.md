@@ -1,6 +1,8 @@
-# AI Trading OS — v1.0.1
+# AI Trading OS — v1.1.0
 
-An event-driven, seven-layer AI trading platform built with Python 3.11. Supports rule-based and LLM-powered trading strategies, paper trading simulation, real-time analytics, and a live dashboard — all wired together through a strict event-bus architecture with zero direct cross-layer imports.
+An event-driven, seven-layer AI trading platform built with Python 3.11+. Features ATLAS strategy (Adaptive Tactical LLM Algorithmic System), live broker integration (Alpaca), Telegram notifications, and a web dashboard — all wired through a strict event-bus architecture with zero cross-layer imports.
+
+**Latest:** Round-robin symbol processing (2 per cycle) for faster Ollama execution, 24/7 crypto markets, Telegram remote monitoring.
 
 ---
 
@@ -10,13 +12,12 @@ The system is divided into 7 layers. Each layer communicates **only** through th
 
 ```
 L1  Foundation (Atlas)          — BaseEvent, Logger, Config, Utils
-L2  Communication (Hermes)      — EventBus, Scheduler, HealthMonitor
-L3  Data (Orion)                — MarketDataProvider, FeatureEngineer, DataPipeline
-L4  Intelligence (Athena)       — SimpleRuleStrategy, LLMAgent,
-         DecisionMemory
-L5  Execution (Apollo-Exec)     — RiskEngine, OrderManager, PortfolioTracker
+L2  Communication (Hermes)      — EventBus, Scheduler, HealthMonitor, PortfolioStateEvent
+L3  Data (Orion)                — YFinanceProvider, FeatureEngineer, NewsAggregator
+L4  Intelligence (Athena)       — AtlasStrategy, SimpleRuleStrategy, LLMStrategy
+L5  Execution (Apollo-Exec)     — RiskEngine, AlpacaOrderManager, PortfolioTracker
 L6  Analytics (Apollo-Analytics)— MetricsEngine, TradeJournal, ReportGenerator
-L7  Dashboard (Helios)          — LiveView (terminal shell)
+L7  Dashboard (Helios)          — Web Dashboard, TelegramNotifier
 ```
 
 ### Event Flow
@@ -55,16 +56,32 @@ scripts/architecture_lint.py# AST-based cross-layer import enforcement
 
 ## Key Features
 
+### Core Architecture
 - **Event-driven architecture** — all cross-layer communication via EventBus with fnmatch wildcard subscriptions
 - **Frozen dataclasses** — all models use `@dataclass(frozen=True, slots=True)` for immutability
-- **Rule-based strategy** — `SimpleRuleStrategy` uses `price_change_pct` threshold to generate BUY/SELL/HOLD signals
-- **LLM agent** — `LLMAgent` accepts an injected client, parses strict JSON responses, raises on bad output
-- **Risk engine** — gates orders by confidence threshold, position sizing (`cash * pct / price`), and unknown symbols
-- **Paper trading only** — `OrderManager(live_mode=True)` raises `NotImplementedError` by design
-- **Hash-chained journal** — `TradeJournal` uses SHA-256 hash chains for tamper-evident trade logging
-- **Performance metrics** — Sharpe ratio (annualised √252), max drawdown, win rate, total P&L
 - **Architecture lint** — `scripts/architecture_lint.py` enforces no illegal cross-layer imports via AST analysis
-- **Security hardened** — path traversal (CWE-22) fixed across 5 files, ReDoS-safe bounded regexes, exception logging
+- **Security hardened** — path traversal (CWE-22) fixed, ReDoS-safe bounded regexes, exception logging
+
+### Trading Strategies
+- **ATLAS Strategy** — 6-step regime-gated multi-factor confluence system with dual LLM backend (Groq → Ollama fallback)
+- **Rule-based strategy** — `SimpleRuleStrategy` uses technical indicators for deterministic signals
+- **LLM strategies** — Groq and Ollama integration with position memory and news context
+
+### Execution & Risk
+- **Live broker integration** — Alpaca Markets API (paper/live modes) with `AlpacaOrderManager`
+- **Multi-layer risk controls** — 2% capital limit, 10% drawdown stop, correlation limits, ATR-based trailing stops
+- **Live trading gate** — requires explicit 30-day paper validation flag
+- **Circuit breakers** — daily loss limit (-3%), market hours enforcement
+
+### Monitoring & Analytics
+- **Telegram notifications** — real-time trade alerts, remote commands (`/status`, `/positions`, `/pnl`, `/stop`)
+- **Web dashboard** — live portfolio view at `http://127.0.0.1:5000` with kill switch
+- **Hash-chained journal** — SHA-256 tamper-evident trade logging
+- **Performance metrics** — Sharpe ratio (annualised √252), max drawdown, win rate, total P&L
+
+### Optimization
+- **Round-robin symbol processing** — 2 symbols per cycle for faster Ollama execution (3 cycles cover all 6 symbols)
+- **24/7 crypto markets** — BTC, ETH, SOL, AVAX, MATIC, LINK (no market hours constraints)
 
 ---
 

@@ -98,20 +98,22 @@ except ImportError:
 logging.basicConfig(level=logging.WARNING)
 _log = logging.getLogger(__name__)
 
-SYMBOLS = ["AAPL", "MSFT", "GOOGL", "BTC-USD", "ETH-USD", "TSLA"]
+# TEMP: Using only 24/7 crypto markets for faster Ollama execution
+# Original: ["AAPL", "MSFT", "GOOGL", "BTC-USD", "ETH-USD", "TSLA"]
+SYMBOLS = ["BTC-USD", "ETH-USD", "SOL-USD", "AVAX-USD", "MATIC-USD", "LINK-USD"]
 
 # Symbols that only trade during NYSE market hours
-_STOCK_SYMBOLS = {"AAPL", "MSFT", "GOOGL", "TSLA"}
-_CRYPTO_SYMBOLS = {"BTC-USD", "ETH-USD"}
+_STOCK_SYMBOLS = set()  # Empty - using only crypto
+_CRYPTO_SYMBOLS = {"BTC-USD", "ETH-USD", "SOL-USD", "AVAX-USD", "MATIC-USD", "LINK-USD"}
 
 # Correlation groups — limit simultaneous long positions within each group
 _CORRELATION_GROUPS = [
-    {"AAPL", "MSFT", "GOOGL", "TSLA"},  # Tech stocks — max 2 long at once
-    {"BTC-USD", "ETH-USD"},              # Crypto — max 1 long at once
+    {"BTC-USD", "ETH-USD"},                          # Major crypto — max 2
+    {"SOL-USD", "AVAX-USD", "MATIC-USD", "LINK-USD"} # Alt layer-1s — max 2
 ]
 _MAX_CORRELATED_LONGS = {  # Max simultaneous long positions per group
-    0: 3,  # Tech: allow max 3 (of 4)
-    1: 2,  # Crypto: allow both BTC + ETH
+    0: 2,  # Major crypto: allow both BTC + ETH
+    1: 2,  # Alt L1s: max 2 simultaneous
 }
 
 def _get_daily_trend(symbol: str) -> str:
@@ -328,6 +330,10 @@ cycle = 0
 total_buy = 0
 total_sell = 0
 daily_start_value = capital    # portfolio value at start of session
+
+# Round-robin symbol rotation — process 2 symbols per cycle
+_SYMBOLS_PER_CYCLE = 2
+_symbol_rotation_index = 0
 # ATR-based dynamic stops (computed per-symbol each cycle from feature vector)
 # Fallback constants used if ATR is not available
 _DEFAULT_STOP_MULTIPLIER = 2.0   # Stop = entry - 2 * ATR
@@ -469,10 +475,17 @@ while not shutdown:
         strategy = SimpleRuleStrategy(threshold=0.3)
         print("\n[STRATEGY SWAP] Switched to SimpleRuleStrategy\n")
     
+    # Round-robin: Select 2 symbols for this cycle
+    symbols_this_cycle = []
+    for i in range(_SYMBOLS_PER_CYCLE):
+        idx = (_symbol_rotation_index + i) % len(SYMBOLS)
+        symbols_this_cycle.append(SYMBOLS[idx])
+    _symbol_rotation_index = (_symbol_rotation_index + _SYMBOLS_PER_CYCLE) % len(SYMBOLS)
+    
     print(
         f"[Cycle {cycle:>3}] {now.strftime('%H:%M:%S')} "
         f"— {int(remaining // 60)}m {int(remaining % 60)}s remaining  "
-        f"| strategy={ds.get_strategy_mode()}"
+        f"| strategy={ds.get_strategy_mode()} | symbols={', '.join(symbols_this_cycle)}"
     )
     closed_stocks = [s for s in _STOCK_SYMBOLS if not _is_market_open(s)]
     if closed_stocks:
@@ -522,7 +535,8 @@ while not shutdown:
         time.sleep(fetch_interval)
         continue
 
-    for symbol in SYMBOLS:
+    # Process only the selected symbols for this cycle (round-robin)
+    for symbol in symbols_this_cycle:
         try:
             # Skip stocks outside market hours
             if not _is_market_open(symbol):
