@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import json
 import os
+from pathlib import Path
 from typing import Generator
 
 from flask import Flask, Response, jsonify, request, stream_with_context
@@ -53,8 +54,11 @@ def create_app(state: DashboardState | None = None) -> Flask:
     @app.get("/")
     def index() -> Response:
         # Serve the full-featured command dashboard
-        template_path = os.path.join(template_dir, "index.html")
-        with open(template_path, encoding="utf-8") as f:
+        safe_template_dir = Path(template_dir).resolve()
+        safe_path = (safe_template_dir / "index.html").resolve()
+        if not str(safe_path).startswith(str(safe_template_dir)):
+            return Response("Forbidden", status=403)
+        with open(safe_path, encoding="utf-8") as f:
             html = f.read()
         return Response(html, mimetype="text/html")
 

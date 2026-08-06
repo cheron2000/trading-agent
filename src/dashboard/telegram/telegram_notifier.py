@@ -126,6 +126,9 @@ class TelegramNotifier:
         self._realized_pnl: float = 0.0
         self._total_return_pct: float = 0.0
 
+        # Entry price cache for SELL P&L computation — populated by _on_fill()
+        self._entry_prices: dict[str, float] = {}
+
     # ------------------------------------------------------------------
     # Lifecycle
     # ------------------------------------------------------------------
@@ -495,11 +498,8 @@ class TelegramNotifier:
         asyncio.run_coroutine_threadsafe(self._safe_send(text), self._loop)
 
     def _entry_prices_cache(self) -> dict[str, float]:
-        """Lazy-initialise the entry price cache for SELL P&L computation."""
-        if not hasattr(self, "_entry_prices"):
-            # Use object.__setattr__ since the class is not frozen
-            object.__setattr__(self, "_entry_prices", {})
-        return self._entry_prices  # type: ignore[attr-defined]
+        """Return the entry price cache for SELL P&L computation."""
+        return self._entry_prices
 
     def _find_entry_price(self, symbol: str, fill_price: float) -> float:
         """Return cached entry price for a symbol, or fill_price if unknown."""

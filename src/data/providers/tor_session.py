@@ -20,8 +20,9 @@ import logging
 
 _log = logging.getLogger(__name__)
 
-SOCKS5_PROXY = "socks5h://127.0.0.1:9150"  # Tor Browser default SOCKS port
-TOR_CONTROL_PORT = 9151  # Tor Browser control port
+# Default ports — Tor Browser uses 9150/9151, standalone tor daemon uses 9050/9051
+_DEFAULT_SOCKS_PORT: int = 9150
+_DEFAULT_CONTROL_PORT: int = 9151
 
 
 class TorProxySession:
@@ -32,17 +33,33 @@ class TorProxySession:
 
     Usage::
 
+        # Tor Browser (default)
         tor = TorProxySession()
+
+        # Standalone tor daemon
+        tor = TorProxySession(socks_port=9050, control_port=9051)
+
         print(tor.get_current_ip())   # shows Tor exit IP
         tor.rotate_ip()               # request new circuit
         print(tor.get_current_ip())   # different IP
     """
 
-    def __init__(self, control_password: str = "") -> None:
+    def __init__(
+        self,
+        control_password: str = "",
+        socks_port: int = _DEFAULT_SOCKS_PORT,
+        control_port: int = _DEFAULT_CONTROL_PORT,
+    ) -> None:
         """
         Args:
             control_password: Tor control port password.
                               Empty string if no password set in torrc.
+            socks_port:       SOCKS5 proxy port.
+                              9150 = Tor Browser (default).
+                              9050 = standalone tor daemon.
+            control_port:     Tor control port.
+                              9151 = Tor Browser (default).
+                              9051 = standalone tor daemon.
 
         Raises:
             ImportError: If requests[socks] is not installed.
@@ -57,6 +74,8 @@ class TorProxySession:
 
         self._requests = requests
         self._password = control_password
+        self._socks_port = socks_port
+        self._control_port = control_port
         self._session = self._make_session()
 
     # ------------------------------------------------------------------
@@ -78,7 +97,7 @@ class TorProxySession:
             from stem import Signal
             from stem.control import Controller
 
-            with Controller.from_port(port=TOR_CONTROL_PORT) as ctrl:
+            with Controller.from_port(port=self._control_port) as ctrl:
                 ctrl.authenticate(password=self._password)
                 ctrl.signal(Signal.NEWNYM)
             _log.info("Tor circuit rotated — new exit IP requested.")
@@ -87,7 +106,7 @@ class TorProxySession:
         except Exception:
             _log.warning(
                 "Failed to rotate Tor circuit — is Tor running on port %d?",
-                TOR_CONTROL_PORT,
+                self._control_port,
                 exc_info=True,
             )
 
@@ -110,9 +129,10 @@ class TorProxySession:
 
     def _make_session(self):
         """Build a requests.Session with Tor SOCKS5 proxy configured."""
+        proxy = f"socks5h://127.0.0.1:{self._socks_port}"
         session = self._requests.Session()
         session.proxies = {
-            "http": SOCKS5_PROXY,
-            "https": SOCKS5_PROXY,
+            "http": proxy,
+            "https": proxy,
         }
         return session
