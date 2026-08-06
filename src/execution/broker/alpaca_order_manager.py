@@ -91,6 +91,8 @@ class AlpacaOrderManager:
         self._live_trading = live_trading
         self._peak_portfolio_value: float = initial_portfolio_value
         self._log = _LOG
+        self._api_key = api_key
+        self._secret_key = secret_key
 
         # Instantiate the Alpaca client (paper=True → paper API endpoint)
         self._client: TradingClient = TradingClient(
@@ -161,7 +163,11 @@ class AlpacaOrderManager:
         except Exception as exc:
             raise RuntimeError(f"Alpaca API error: {exc}") from exc
 
-        order_id: str = str(submitted.id)
+        # Handle both dict and object returns from Alpaca SDK
+        if isinstance(submitted, dict):
+            order_id = str(submitted.get("id"))
+        else:
+            order_id = str(getattr(submitted, "id"))
 
         # 4. Poll for fill confirmation
         fill_price = self._await_fill(order_id)
@@ -201,14 +207,28 @@ class AlpacaOrderManager:
         if not positions:
             return []
 
-        return [
-            {
-                "symbol": p.symbol,
-                "quantity": float(p.qty),
-                "market_value": float(p.market_value),
-            }
-            for p in positions
-        ]
+        result = []
+        for p in positions:
+            sym = getattr(p, "symbol", None)
+            qty = getattr(p, "qty", None)
+            mv = getattr(p, "market_value", None)
+            if sym is None and isinstance(p, dict):
+                sym = p.get("symbol", "")
+            if qty is None and isinstance(p, dict):
+                qty = p.get("qty", 0)
+            if mv is None and isinstance(p, dict):
+                mv = p.get("market_value", 0)
+            try:
+                result.append(
+                    {
+                        "symbol": sym,
+                        "quantity": float(qty),
+                        "market_value": float(mv),
+                    }
+                )
+            except Exception:
+                continue
+        return result
 
     def get_portfolio_value(self) -> float:
         """Return the current total portfolio equity from Alpaca.
@@ -324,9 +344,8 @@ class AlpacaOrderManager:
             from alpaca.data.historical import StockHistoricalDataClient
             from alpaca.data.requests import StockLatestTradeRequest
 
-            # Re-use the credentials already held by the trading client
-            creds = self._client._api_key, self._client._secret_key  # type: ignore[attr-defined]
-            data_client = StockHistoricalDataClient(*creds)
+            # Re-use the stored credentials
+            data_client = StockHistoricalDataClient(self._api_key, self._secret_key)
             req = StockLatestTradeRequest(symbol_or_symbols=symbol)
             trade = data_client.get_stock_latest_trade(req)
             return float(trade[symbol].price)
@@ -360,9 +379,18 @@ class AlpacaOrderManager:
             except Exception as exc:
                 raise RuntimeError(f"Alpaca API error: {exc}") from exc
 
-            status = str(alpaca_order.status).lower()
-            if status in _FILLED_STATUSES and alpaca_order.filled_avg_price is not None:
-                return float(alpaca_order.filled_avg_price)
+            # Handle both dict and object status returns
+            status = None
+            filled_avg = None
+            if isinstance(alpaca_order, dict):
+                status = str(alpaca_order.get("status", "")).lower()
+                filled_avg = alpaca_order.get("filled_avg_price", None)
+            else:
+                status = str(getattr(alpaca_order, "status", "")).lower()
+                filled_avg = getattr(alpaca_order, "filled_avg_price", None)
+
+            if status in _FILLED_STATUSES and filled_avg is not None:
+                return float(filled_avg)
 
             time.sleep(_POLL_INTERVAL_SECONDS)
 

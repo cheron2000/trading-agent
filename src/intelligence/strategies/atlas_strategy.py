@@ -273,7 +273,7 @@ Respond with ONLY this JSON object, no markdown or surrounding text:
 }}"""
 
     def _parse_atlas_response(
-        self, symbol: str, text: str, engine_name: str
+        self, symbol: str, text: str, engine_name: str | None
     ) -> Decision:
         try:
             raw = text.strip()
@@ -301,7 +301,8 @@ Respond with ONLY this JSON object, no markdown or surrounding text:
                 action = "HOLD"
 
             reasoning = data.get("reasoning", "ATLAS evaluation")
-            rationale = f"[{engine_name}] [{data.get('regime_used', 'N/A').upper()}] {reasoning}"
+            engine_display = engine_name or "UnknownEngine"
+            rationale = f"[{engine_display}] [{data.get('regime_used', 'N/A').upper()}] {reasoning}"
 
             return Decision(
                 symbol=symbol,

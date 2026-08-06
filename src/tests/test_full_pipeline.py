@@ -137,7 +137,9 @@ def make_feature_vector(symbol: str = "AAPL", pct: float = 2.5) -> FeatureVector
 class TestDataToIntelligencePipeline:
 
     def test_data_pipeline_publishes_feature_vector_event(self, bus: EventBus) -> None:
-        received = []
+        from typing import Any
+
+        received: list[Any] = []
         bus.subscribe("data.feature_vector", received.append)
 
         tick = MarketTick(

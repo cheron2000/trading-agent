@@ -18,7 +18,7 @@ Python Version: 3.11+
 from __future__ import annotations
 
 import statistics
-from typing import ClassVar
+from typing import Any, ClassVar
 
 from data.models.market_tick import MarketTick
 from data.models.feature_vector import FeatureVector
@@ -129,7 +129,7 @@ class FeatureEngineer:
     def _compute_features(
         prices: list[float],
         volumes: list[float],
-    ) -> dict[str, float]:
+    ) -> dict[str, Any]:
         """Compute all features from price and volume sequences."""
         n = len(prices)
 

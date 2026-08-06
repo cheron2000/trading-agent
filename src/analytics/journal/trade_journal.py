@@ -253,8 +253,10 @@ class TradeJournal:
         disk before ``record()`` returns, so a crash immediately after
         a fill still leaves an audit trail instead of losing it.
         """
+        if self._persist_path is None:
+            raise RuntimeError("persist_path is not configured")
         line = json.dumps(entry.to_dict(), sort_keys=True)
-        with open(self._persist_path, "a", encoding="utf-8") as fh:
+        with self._persist_path.open("a", encoding="utf-8") as fh:
             fh.write(line + "\n")
             fh.flush()
             os.fsync(fh.fileno())

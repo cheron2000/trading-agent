@@ -38,7 +38,7 @@ class _FoundationJSONEncoder(json.JSONEncoder):
     def default(self, obj: Any) -> Any:
         """Serialize unsupported Python objects."""
 
-        if is_dataclass(obj):
+        if is_dataclass(obj) and not isinstance(obj, type):
             return asdict(obj)
 
         if isinstance(obj, (datetime, date)):

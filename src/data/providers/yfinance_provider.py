@@ -82,7 +82,14 @@ class YFinanceProvider:
         self._recent_cache: dict[str, list[MarketTick]] = {}
 
         # Tor proxy setup — only imported when use_tor=True
-        self._tor = None
+        from typing import TYPE_CHECKING
+
+        if TYPE_CHECKING:
+            from data.providers.tor_session import (
+                TorProxySession as TorProxySessionType,
+            )
+
+        self._tor: "TorProxySessionType | None" = None
         if use_tor:
             import os
             from data.providers.tor_session import TorProxySession
@@ -236,6 +243,8 @@ class YFinanceProvider:
 
     def _fetch_via_tor(self, symbols: list[str]) -> None:
         """Fetch prices via Yahoo Finance JSON API through Tor session."""
+        if self._tor is None:
+            return
         now_epoch = time.monotonic()
         now_dt = datetime.now(timezone.utc)
         session = self._tor.session
@@ -250,7 +259,11 @@ class YFinanceProvider:
                         url, timeout=15, headers={"User-Agent": "Mozilla/5.0"}
                     )
                     if resp.status_code == 429:
-                        self._tor.rotate_ip()
+                        if self._tor is not None:
+                            try:
+                                self._tor.rotate_ip()
+                            except Exception:
+                                pass
                         time.sleep(10)
                         continue
                     resp.raise_for_status()
@@ -308,10 +321,11 @@ class YFinanceProvider:
                         exc,
                     )
                     if attempt < self._MAX_RETRIES - 1:
-                        try:
-                            self._tor.rotate_ip()
-                        except Exception:
-                            pass
+                        if self._tor is not None:
+                            try:
+                                self._tor.rotate_ip()
+                            except Exception:
+                                pass
                         time.sleep(10)
 
     def _fetch_via_yfinance(self, symbols: list[str]) -> None:

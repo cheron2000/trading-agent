@@ -36,6 +36,7 @@ class ConfigManager:
 
     _instance: ConfigManager | None = None
     _lock = Lock()
+    _initialized: bool = False
 
     def __new__(cls) -> ConfigManager:
         """Create the singleton instance."""

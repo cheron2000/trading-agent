@@ -223,6 +223,7 @@ class TelegramNotifier:
     async def _run_bot(self) -> None:
         """Coroutine that runs the bot Application until stop() is called."""
         app = self._app
+        assert app is not None
         await app.initialize()
         await app.start()
         await app.updater.start_polling(drop_pending_updates=True)
@@ -362,7 +363,9 @@ class TelegramNotifier:
         text: Message text to send.
         """
         try:
-            bot = self._app.bot
+            app = self._app
+            assert app is not None
+            bot = app.bot
             await bot.send_message(chat_id=self._chat_id, text=text)
         except TelegramError as exc:
             self._log.warning("Telegram send failed: %s", exc)
