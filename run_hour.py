@@ -863,11 +863,5 @@ print()
 print(f"  Journal entries:  {report['total_journal_entries']}")
 print(f"  Journal integrity:{report['journal_integrity']}")
 print(f"{'='*60}\n")
-print("Dashboard is still running at http://127.0.0.1:5000 — press Ctrl+C to exit.")
-
-# Keep the dashboard server alive after the run ends so you can review results
-try:
-    while True:
-        time.sleep(1)
-except KeyboardInterrupt:
-    pass
+print("Exiting.")
+sys.exit(0)
