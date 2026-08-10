@@ -61,6 +61,7 @@ INITIAL_CASH = 100_000.0
 
 from collections.abc import Iterator
 
+
 @pytest.fixture()
 def bus() -> Iterator[EventBus]:
     b = EventBus()
