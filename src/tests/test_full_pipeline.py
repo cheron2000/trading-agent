@@ -59,8 +59,10 @@ INITIAL_CASH = 100_000.0
 # ---------------------------------------------------------------------------
 
 
+from collections.abc import Iterator
+
 @pytest.fixture()
-def bus() -> EventBus:
+def bus() -> Iterator[EventBus]:
     b = EventBus()
     yield b
     b.clear()
@@ -283,6 +285,7 @@ class TestRiskEngineApproval:
     ) -> None:
         decision = make_decision_event("AAPL", "BUY", confidence=0.85)
         order = risk_engine.approve(decision, portfolio)
+        assert order is not None
         expected_qty = round((INITIAL_CASH * 0.10) / PRICE_FEED["AAPL"], 6)
         assert order.quantity == pytest.approx(expected_qty)
 
@@ -319,7 +322,7 @@ class TestOrderManagerExecution:
     def test_execute_publishes_fill_event_on_bus(
         self, bus: EventBus, order_manager: OrderManager
     ) -> None:
-        received = []
+        received: list = []
         bus.subscribe("execution.fill", received.append)
         order = Order(
             symbol="AAPL",
@@ -735,6 +738,7 @@ class TestFullEndToEndPipeline:
         # BUY
         buy_decision = make_decision_event("AAPL", "BUY", confidence=0.85)
         buy_order = risk.approve(buy_decision, portfolio)
+        assert buy_order is not None
         buy_fill = om.execute(buy_order)
         tracker.apply_fill(buy_fill)
         metrics.record_fill(buy_fill, entry_price=PRICE_FEED["AAPL"])

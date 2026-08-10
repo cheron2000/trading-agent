@@ -10,7 +10,7 @@ hypothesis==6.157.1
 # Code quality
 ruff==0.8.4
 black==25.1.0
-mypy==1.14.1
+mypy==1.15.0
 types-PyYAML==6.0.12.20240917
 types-requests==2.31.0.20240125
 colorama==0.4.6

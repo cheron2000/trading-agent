@@ -222,8 +222,8 @@ class AlpacaOrderManager:
                 result.append(
                     {
                         "symbol": sym,
-                        "quantity": float(qty),
-                        "market_value": float(mv),
+                        "quantity": float(qty or 0.0),
+                        "market_value": float(mv or 0.0),
                     }
                 )
             except Exception:

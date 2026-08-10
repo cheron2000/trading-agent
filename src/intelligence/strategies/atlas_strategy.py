@@ -230,7 +230,7 @@ MACD: line={macd_line:+.4f} signal={macd_signal:+.4f} hist={macd_hist:+.4f}
 Bollinger Bands: upper=${bb_upper:.2f} mid=${bb_mid:.2f} lower=${bb_lower:.2f} (percent_b={bb_pos:.2f})
 ATR(14): ${atr:.4f}                       ATR ratio: {atr_ratio:.2f}
 ADX(14): {adx:.1f}                         Daily Trend: {daily_trend}
-Detected Regime: {regime_label.upper()}           Regime Confidence: {regime_confidence:.0%}
+Detected Regime: {str(regime_label).upper()}           Regime Confidence: {regime_confidence:.0%}
 
 Position Context: {pos_str}
 News Context: {news_ctx[:400]}
