@@ -9,8 +9,9 @@ ignore = [
     "S112",    # try/except/continue intentional in non-critical paths
     "C408",    # dict() in test helpers is intentional for readability
     "SIM117",  # nested with in tests is clearer than combined form
-    "RUF059",  # unpacked variable in test is intentional tuple unpack
     "RUF022",  # __all__ follows logical grouping, not alphabetical sort
+    "E402",    # module-level import not at top — intentional in test files with mock setup
+    "E731",    # lambda assignment — intentional for concise helper in candle_strategy
 ]
 
 [lint.per-file-ignores]
