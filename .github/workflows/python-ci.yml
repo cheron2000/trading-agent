@@ -28,7 +28,9 @@ jobs:
           PYTHONPATH: src
 
       - name: Pytest with coverage
-        run: pytest --cov=src --cov-report=term-missing --cov-fail-under=60
+        run: pytest src/ --cov=src --cov-report=term-missing --cov-fail-under=60
+        env:
+          PYTHONPATH: src
 
       - name: Architecture lint (no illegal cross-layer imports)
         run: python scripts/architecture_lint.py
