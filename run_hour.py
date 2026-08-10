@@ -383,7 +383,7 @@ signal.signal(signal.SIGINT, _handle_signal)
 _dash_app = create_app()
 _dash_thread = threading.Thread(
     target=lambda: _dash_app.run(
-        host="127.0.0.1", port=5000, debug=False, use_reloader=False
+        host="127.0.0.1", port=5000, debug=False, use_reloader=False, threaded=True
     ),
     daemon=True,
 )
