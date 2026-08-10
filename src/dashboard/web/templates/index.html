@@ -636,6 +636,7 @@
     const $ = id => document.getElementById(id);
     let allTrades = [];
     let evtSource = null;
+    let _applyingSnapshot = false;
 
     // Chart.js Setup — gracefully handle CDN failure
     let equityChart = null;
@@ -714,7 +715,9 @@
       }
 
       if (s.strategy_mode) {
+        _applyingSnapshot = true;
         $('strategy-selector').value = s.strategy_mode;
+        _applyingSnapshot = false;
       }
 
       // Metric Cards
@@ -803,7 +806,7 @@
           <td class="mono" style="font-weight:700;">${d.symbol || ''}</td>
           <td><span class="${badge}">${d.action}</span></td>
           <td class="mono">${(parseFloat(d.confidence || 0) * 100).toFixed(0)}%</td>
-          <td style="color:var(--text-muted); font-size:12px;" title="${(d.rationale || '').replace(/"/g, '&quot;')}">${(d.rationale || '').slice(0, 70)}...</td>
+          <td style="color:var(--text-muted); font-size:12px;" title="${(d.rationale || '').replace(/"/g, '&quot;')}">${(d.rationale || '').slice(0, 80)}${(d.rationale||'').length > 80 ? '...' : ''}</td>
         </tr>`;
       }).join('');
     }
@@ -860,6 +863,7 @@
     }
 
     function changeStrategy(mode) {
+      if (_applyingSnapshot) return;
       fetch('/api/control/strategy', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
