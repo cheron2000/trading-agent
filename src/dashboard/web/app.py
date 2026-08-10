@@ -24,8 +24,8 @@ from __future__ import annotations
 
 import json
 import os
+from collections.abc import Generator
 from pathlib import Path
-from typing import Generator
 
 from flask import Flask, Response, jsonify, request, stream_with_context
 

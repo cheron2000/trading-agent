@@ -22,9 +22,9 @@ from __future__ import annotations
 import json
 import logging
 import time
-from urllib.request import Request
-from urllib.error import HTTPError, URLError
 import urllib.request
+from urllib.error import HTTPError, URLError
+from urllib.request import Request
 
 _log = logging.getLogger(__name__)
 

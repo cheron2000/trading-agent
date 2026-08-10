@@ -15,6 +15,7 @@ from dataclasses import dataclass
 from datetime import datetime
 
 from foundation.base_event import BaseEvent
+
 from .event_metadata import EventMetadata
 from .event_priority import EventPriority
 

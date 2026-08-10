@@ -53,7 +53,7 @@ class BaseModel:
         return self.to_dict()
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "BaseModel":
+    def from_dict(cls, data: dict[str, Any]) -> BaseModel:
         """Create an instance from a dictionary.
 
         Args:

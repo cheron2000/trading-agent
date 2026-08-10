@@ -6,12 +6,12 @@ and EventBus rate limiting integration.
 from __future__ import annotations
 
 import time
+
 import pytest
 
-from foundation.base_event import BaseEvent
 from communication.bus.event_bus import EventBus
 from communication.bus.rate_limiter import RateLimiter, RateLimitExceeded
-
+from foundation.base_event import BaseEvent
 
 # ---------------------------------------------------------------------------
 # RateLimiter construction

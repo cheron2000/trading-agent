@@ -16,7 +16,6 @@ Python Version: 3.11+
 
 from __future__ import annotations
 
-import statistics
 from typing import Any
 
 

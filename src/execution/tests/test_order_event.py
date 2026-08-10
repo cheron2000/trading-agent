@@ -6,8 +6,9 @@ All assertions use == (not is) except for None checks.
 
 from __future__ import annotations
 
-import pytest
 from dataclasses import FrozenInstanceError
+
+import pytest
 
 from execution.events.order_event import OrderEvent
 from execution.models.order import Order

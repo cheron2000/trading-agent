@@ -14,39 +14,40 @@ from datetime import datetime, timezone
 
 import pytest
 
-# Foundation
-from foundation.base_event import BaseEvent
+from analytics.journal.trade_journal import TradeJournal
+
+# Analytics
+from analytics.metrics.metrics_engine import MetricsEngine
 
 # Communication
 from communication.bus.event_bus import EventBus
 
-# Data
-from data.models.market_tick import MarketTick
-from data.models.feature_vector import FeatureVector
+# Dashboard
+from dashboard.shell.live_view import LiveView
 from data.events.feature_vector_event import FeatureVectorEvent
 from data.features.feature_engineer import FeatureEngineer
+from data.models.feature_vector import FeatureVector
+
+# Data
+from data.models.market_tick import MarketTick
 from data.normalizers.market_normalizer import MarketNormalizer
 from data.pipeline import DataPipeline
-
-# Intelligence
-from intelligence.models.decision import Decision
-from intelligence.events.decision_event import DecisionEvent
-from intelligence.strategies.rule_based import SimpleRuleStrategy
+from execution.engine.order_manager import OrderManager
+from execution.engine.portfolio_tracker import PortfolioTracker
+from execution.events.fill_event import FillEvent
 
 # Execution
 from execution.models.order import Order
 from execution.models.portfolio import Portfolio
-from execution.events.fill_event import FillEvent
 from execution.risk.risk_engine import RiskEngine
-from execution.engine.order_manager import OrderManager
-from execution.engine.portfolio_tracker import PortfolioTracker
 
-# Analytics
-from analytics.metrics.metrics_engine import MetricsEngine
-from analytics.journal.trade_journal import TradeJournal
+# Foundation
+from foundation.base_event import BaseEvent
+from intelligence.events.decision_event import DecisionEvent
 
-# Dashboard
-from dashboard.shell.live_view import LiveView
+# Intelligence
+from intelligence.models.decision import Decision
+from intelligence.strategies.rule_based import SimpleRuleStrategy
 
 TS = datetime(2024, 1, 15, 14, 30, 0, tzinfo=timezone.utc)
 PRICE_FEED = {"AAPL": 182.50, "MSFT": 374.25, "TSLA": 218.90}
@@ -744,7 +745,7 @@ class TestFullEndToEndPipeline:
         sell_om = OrderManager(price_feed=sell_price_feed, bus=bus)
         _sell_risk = RiskEngine(
             price_feed=sell_price_feed, max_position_pct=0.10, min_confidence=0.60
-        )  # noqa: F841
+        )
         sell_decision = make_decision_event("AAPL", "SELL", confidence=0.80)
         sell_order = Order(
             symbol="AAPL",

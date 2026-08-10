@@ -44,9 +44,9 @@ import logging
 import time
 from datetime import datetime, timezone
 from typing import ClassVar
-from urllib.request import urlopen
-from urllib.error import URLError, HTTPError
+from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
+from urllib.request import urlopen
 
 from data.models.market_tick import MarketTick
 from data.providers.i_data_provider import IDataProvider
@@ -450,7 +450,7 @@ class AlphaVantageProvider:
 
         url = f"{_BASE_URL}?{urlencode(params)}"
         try:
-            with urlopen(url, timeout=15) as resp:  # noqa: S310
+            with urlopen(url, timeout=15) as resp:
                 raw = resp.read().decode("utf-8")
                 self._last_request_at = time.monotonic()
                 return json.loads(raw)

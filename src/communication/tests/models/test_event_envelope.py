@@ -6,8 +6,8 @@ from __future__ import annotations
 
 import pytest
 
-from foundation.base_event import BaseEvent
 from communication.models import EventEnvelope, EventMetadata, EventPriority
+from foundation.base_event import BaseEvent
 
 
 def make_event() -> BaseEvent:

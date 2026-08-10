@@ -12,12 +12,12 @@ from pathlib import Path
 
 import pytest
 
-from data.models.market_tick import MarketTick
-from data.models.feature_vector import FeatureVector
 from data.events.feature_vector_event import FeatureVectorEvent
-from data.providers.market_provider import MarketDataProvider
-from data.providers.i_data_provider import IDataProvider
+from data.models.feature_vector import FeatureVector
+from data.models.market_tick import MarketTick
 from data.normalizers.market_normalizer import MarketNormalizer
+from data.providers.i_data_provider import IDataProvider
+from data.providers.market_provider import MarketDataProvider
 
 TS = datetime(2024, 1, 15, 14, 30, 0, tzinfo=timezone.utc)
 

@@ -110,7 +110,6 @@ class MarketDataProvider:
         Args:
             symbols: Ignored.
         """
-        pass
 
     def fetch_recent(self, symbol: str, n: int = 5) -> list[MarketTick]:
         """Fetch recent ticks for a symbol.

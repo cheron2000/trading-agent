@@ -4,8 +4,9 @@ Unit tests for communication.models.heartbeat.
 
 from __future__ import annotations
 
-import pytest
 from datetime import datetime, timezone
+
+import pytest
 
 from communication.models import Heartbeat
 from communication.models.health_state import HealthState

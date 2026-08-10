@@ -8,7 +8,6 @@ import pytest
 
 from communication.models import PluginManifest
 
-
 VALID_KWARGS = dict(
     plugin_id="plugin-001",
     name="MarketDataPlugin",

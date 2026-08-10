@@ -42,7 +42,7 @@ class PretrainedCandleModel:
 
             safe_path = Path(model_path).resolve()
             with open(safe_path, "rb") as fh:
-                self._model = pickle.load(fh)  # noqa: S301
+                self._model = pickle.load(fh)
             _log.info("PretrainedCandleModel: loaded from %s", safe_path)
         except FileNotFoundError:
             _log.warning(

@@ -84,7 +84,7 @@ class HealthState(StrEnum):
         )
 
     @classmethod
-    def default(cls) -> "HealthState":
+    def default(cls) -> HealthState:
         """Return the default initial health state.
 
         Returns:
@@ -93,7 +93,7 @@ class HealthState(StrEnum):
         return cls.STARTING
 
     @classmethod
-    def from_value(cls, value: str) -> "HealthState":
+    def from_value(cls, value: str) -> HealthState:
         """Create a HealthState from its serialized value.
 
         Args:

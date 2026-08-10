@@ -23,8 +23,8 @@ from __future__ import annotations
 
 import json
 import logging
-import urllib.request
 import urllib.parse
+import urllib.request
 from typing import ClassVar
 
 from data.models.feature_vector import FeatureVector

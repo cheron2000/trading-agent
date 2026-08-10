@@ -87,7 +87,7 @@ def require_not_empty(value: str, name: str) -> None:
         raise ValidationError(f"'{name}' must not be empty.")
 
 
-def require_positive(value: int | float, name: str) -> None:
+def require_positive(value: float, name: str) -> None:
     """Ensure a numeric value is greater than zero.
 
     Args:
@@ -101,7 +101,7 @@ def require_positive(value: int | float, name: str) -> None:
         raise ValidationError(f"'{name}' must be greater than zero.")
 
 
-def require_non_negative(value: int | float, name: str) -> None:
+def require_non_negative(value: float, name: str) -> None:
     """Ensure a numeric value is non-negative.
 
     Args:

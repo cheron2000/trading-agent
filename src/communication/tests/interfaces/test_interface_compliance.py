@@ -7,14 +7,13 @@ and IHealthMonitor via isinstance() checks and structural matching.
 
 from __future__ import annotations
 
-from typing import Callable
+from collections.abc import Callable
 
-from foundation.base_event import BaseEvent
-from communication.interfaces import IEventBus, IScheduler, IHealthMonitor
+from communication.interfaces import IEventBus, IHealthMonitor, IScheduler
 from communication.models import Subscription
-from communication.models.heartbeat import Heartbeat
 from communication.models.health_state import HealthState
-
+from communication.models.heartbeat import Heartbeat
+from foundation.base_event import BaseEvent
 
 # ---------------------------------------------------------------------------
 # Stub implementations

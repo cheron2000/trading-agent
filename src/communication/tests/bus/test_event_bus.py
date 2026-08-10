@@ -5,12 +5,13 @@ Unit tests for communication.bus.event_bus.EventBus.
 from __future__ import annotations
 
 import threading
+
 import pytest
 
-from foundation.base_event import BaseEvent
 from communication.bus import EventBus
 from communication.interfaces import IEventBus
 from communication.models import Subscription
+from foundation.base_event import BaseEvent
 
 
 def make_event(event_type: str = "market.tick") -> BaseEvent:

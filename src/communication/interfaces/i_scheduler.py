@@ -15,7 +15,8 @@ Python Version: 3.11+
 
 from __future__ import annotations
 
-from typing import Callable, Protocol, runtime_checkable
+from collections.abc import Callable
+from typing import Protocol, runtime_checkable
 
 
 @runtime_checkable

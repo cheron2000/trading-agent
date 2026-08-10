@@ -167,7 +167,7 @@ class AlpacaOrderManager:
         if isinstance(submitted, dict):
             order_id = str(submitted.get("id"))
         else:
-            order_id = str(getattr(submitted, "id"))
+            order_id = str(submitted.id)
 
         # 4. Poll for fill confirmation
         fill_price = self._await_fill(order_id)
@@ -320,8 +320,7 @@ class AlpacaOrderManager:
         Args:
             current_value: Latest observed portfolio value.
         """
-        if current_value > self._peak_portfolio_value:
-            self._peak_portfolio_value = current_value
+        self._peak_portfolio_value = max(self._peak_portfolio_value, current_value)
 
     # ------------------------------------------------------------------
     # Private helpers

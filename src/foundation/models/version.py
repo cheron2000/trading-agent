@@ -12,8 +12,8 @@ Python: 3.13+
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 import re
+from dataclasses import dataclass
 
 from foundation.models.base_model import BaseModel
 
@@ -61,7 +61,7 @@ class Version(BaseModel):
             raise ValueError("patch version must be >= 0")
 
     @classmethod
-    def parse(cls, value: str) -> "Version":
+    def parse(cls, value: str) -> Version:
         """Parse a semantic version string.
 
         Args:

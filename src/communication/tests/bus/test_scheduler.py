@@ -4,8 +4,9 @@ Unit tests for communication.bus.scheduler.Scheduler.
 
 from __future__ import annotations
 
-import time
 import threading
+import time
+
 import pytest
 
 from communication.bus import Scheduler

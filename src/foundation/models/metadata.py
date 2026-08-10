@@ -11,8 +11,8 @@ Python: 3.13+
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Mapping
 from types import MappingProxyType
 
 from foundation.models.base_model import BaseModel
@@ -99,7 +99,7 @@ class Metadata(BaseModel):
         self,
         key: str,
         value: str,
-    ) -> "Metadata":
+    ) -> Metadata:
         """Return a new Metadata instance with an added attribute.
 
         The original instance remains unchanged.
@@ -126,7 +126,7 @@ class Metadata(BaseModel):
             attributes=updated,
         )
 
-    def with_tag(self, tag: str) -> "Metadata":
+    def with_tag(self, tag: str) -> Metadata:
         """Return a new Metadata instance with an added tag.
 
         Duplicate tags are ignored.

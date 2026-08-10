@@ -177,7 +177,7 @@ class TradeJournal:
         return len(self._entries)
 
     @classmethod
-    def load_from_file(cls, path: str | Path) -> "TradeJournal":
+    def load_from_file(cls, path: str | Path) -> TradeJournal:
         """Reconstruct a TradeJournal by replaying a persisted JSONL file.
 
         Lets a resumed session extend the same durable hash chain

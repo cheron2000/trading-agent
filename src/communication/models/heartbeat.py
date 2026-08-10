@@ -201,4 +201,4 @@ class Heartbeat:
         Reserved for future instrumentation only.
         Must remain side-effect free.
         """
-        return None
+        return

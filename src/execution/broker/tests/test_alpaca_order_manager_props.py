@@ -17,12 +17,11 @@ from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
-from hypothesis import given, settings, assume
+from hypothesis import assume, given, settings
 from hypothesis import strategies as st
 
 from execution.broker.alpaca_order_manager import AlpacaOrderManager
 from execution.models.order import Order
-
 
 # ---------------------------------------------------------------------------
 # Helpers / fixtures
@@ -264,8 +263,7 @@ def test_property_11_drawdown_rejection_and_peak_tracking(
     for value in portfolio_values:
         # Feed the value to _update_peak
         mgr._update_peak(value)
-        if value > expected_peak:
-            expected_peak = value
+        expected_peak = max(expected_peak, value)
 
         # Peak must always equal the running maximum
         assert math.isclose(mgr._peak_portfolio_value, expected_peak, rel_tol=1e-9), (

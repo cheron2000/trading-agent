@@ -21,10 +21,10 @@ import threading
 from datetime import datetime, timezone
 from typing import ClassVar
 
-from foundation.base_event import BaseEvent
-from communication.models.heartbeat import Heartbeat
 from communication.interfaces.i_event_bus import IEventBus
 from communication.interfaces.i_health_monitor import IHealthMonitor
+from communication.models.heartbeat import Heartbeat
+from foundation.base_event import BaseEvent
 
 
 class HealthMonitor:

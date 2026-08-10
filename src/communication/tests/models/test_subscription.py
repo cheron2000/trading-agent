@@ -6,8 +6,7 @@ from __future__ import annotations
 
 import pytest
 
-from communication.models import Subscription
-from communication.models import EventPriority
+from communication.models import EventPriority, Subscription
 
 
 class TestSubscription:

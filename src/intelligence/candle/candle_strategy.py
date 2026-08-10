@@ -23,7 +23,7 @@ from intelligence.models.decision import Decision
 _log = logging.getLogger(__name__)
 
 _STRATEGY_ID = "candle-cil-v1"
-_HOLD = lambda sym, reason: Decision(  # noqa: E731
+_HOLD = lambda sym, reason: Decision(
     symbol=sym,
     action="HOLD",
     confidence=0.0,

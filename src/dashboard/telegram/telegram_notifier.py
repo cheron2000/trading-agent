@@ -43,10 +43,9 @@ from telegram.ext import (
     filters,
 )
 
-from foundation.base_event import BaseEvent
 from communication.interfaces.i_event_bus import IEventBus
 from communication.models.subscription import Subscription
-
+from foundation.base_event import BaseEvent
 
 _log = logging.getLogger(__name__)
 
@@ -185,7 +184,7 @@ class TelegramNotifier:
             future = asyncio.run_coroutine_threadsafe(self._shutdown_app(), self._loop)
             try:
                 future.result(timeout=10)
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 self._log.warning("Error during bot shutdown: %s", exc)
 
         # Join the thread
@@ -215,7 +214,7 @@ class TelegramNotifier:
         self._loop = loop
         try:
             loop.run_until_complete(self._run_bot())
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             self._log.critical("Bot thread crashed: %s", exc, exc_info=True)
         finally:
             loop.close()
@@ -240,7 +239,6 @@ class TelegramNotifier:
         """Gracefully shut down the Application from within its own loop."""
         # The _run_bot loop will notice _stop_event and handle shutdown;
         # this is a no-op placeholder for any extra teardown needed.
-        pass
 
     # ------------------------------------------------------------------
     # EventBus handlers (called on main thread)
@@ -266,7 +264,7 @@ class TelegramNotifier:
 
             text = self._format_fill_message(event, realized_pnl)
             self._schedule_send(text)
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             self._log.error("_on_fill handler error: %s", exc, exc_info=True)
 
     def _on_decision(self, event: BaseEvent) -> None:
@@ -277,7 +275,7 @@ class TelegramNotifier:
                 return
             text = self._format_decision_message(event)
             self._schedule_send(text)
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             self._log.error("_on_decision handler error: %s", exc, exc_info=True)
 
     def _on_session_end(self, event: BaseEvent) -> None:
@@ -286,7 +284,7 @@ class TelegramNotifier:
             payload = getattr(event, "payload", {}) or {}
             text = self._format_session_summary(payload)
             self._schedule_send(text)
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             self._log.error("_on_session_end handler error: %s", exc, exc_info=True)
 
     def _on_portfolio(self, event: BaseEvent) -> None:
@@ -323,7 +321,7 @@ class TelegramNotifier:
         """Handle /stop: publish shutdown event then confirm to user."""
         try:
             self._bus.publish(BaseEvent(event_type="system.shutdown_requested"))
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             self._log.error(
                 "Failed to publish system.shutdown_requested: %s",
                 exc,
@@ -369,7 +367,7 @@ class TelegramNotifier:
             await bot.send_message(chat_id=self._chat_id, text=text)
         except TelegramError as exc:
             self._log.warning("Telegram send failed: %s", exc)
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             self._log.warning("Unexpected error sending Telegram message: %s", exc)
 
     # ------------------------------------------------------------------

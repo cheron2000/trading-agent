@@ -20,14 +20,14 @@ from __future__ import annotations
 import fnmatch
 import logging
 import threading
-from typing import Callable
+from collections.abc import Callable
 from uuid import uuid4
 
-from foundation.base_event import BaseEvent
 from communication.bus.rate_limiter import RateLimiter
+from communication.interfaces.i_event_bus import IEventBus
 from communication.models.event_priority import EventPriority
 from communication.models.subscription import Subscription
-from communication.interfaces.i_event_bus import IEventBus
+from foundation.base_event import BaseEvent
 
 _log = logging.getLogger(__name__)
 

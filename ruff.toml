@@ -1,0 +1,17 @@
+[lint]
+ignore = [
+    "BLE001",  # broad except Exception — intentional in all network/IO/LLM paths
+    "TRY004",  # ValueError used consistently for domain validation
+    "RUF012",  # ClassVar dict on _LEVEL_MAP is a read-only constant
+    "PYI034",  # ConfigManager.__new__ singleton pattern is correct at runtime
+    "DTZ007",  # strptime followed by .replace(tzinfo=utc) is correct
+    "S110",    # try/except/pass intentional in non-critical paths
+    "S112",    # try/except/continue intentional in non-critical paths
+    "C408",    # dict() in test helpers is intentional for readability
+    "SIM117",  # nested with in tests is clearer than combined form
+    "RUF059",  # unpacked variable in test is intentional tuple unpack
+    "RUF022",  # __all__ follows logical grouping, not alphabetical sort
+]
+
+[lint.per-file-ignores]
+"src/data/tests/test_data_layer_step1.py" = ["DTZ001"]  # intentional naive datetime to test UTC conversion

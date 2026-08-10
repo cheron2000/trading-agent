@@ -8,13 +8,11 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-
 from analytics.journal.trade_journal import TradeJournal
 from analytics.metrics.metrics_engine import MetricsEngine
 from analytics.reports.report_generator import ReportGenerator
 from execution.events.fill_event import FillEvent
 from intelligence.events.decision_event import DecisionEvent
-
 
 # ---------------------------------------------------------------------------
 # Fixtures

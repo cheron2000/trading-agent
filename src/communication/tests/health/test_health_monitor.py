@@ -4,17 +4,16 @@ Unit tests for communication.health.health_monitor.HealthMonitor.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
 from unittest.mock import MagicMock
 
 import pytest
 
-from foundation.base_event import BaseEvent
 from communication.health import HealthMonitor
 from communication.interfaces import IHealthMonitor
-from communication.models.heartbeat import Heartbeat
 from communication.models.health_state import HealthState
-
+from communication.models.heartbeat import Heartbeat
+from foundation.base_event import BaseEvent
 
 # ---------------------------------------------------------------------------
 # Helpers

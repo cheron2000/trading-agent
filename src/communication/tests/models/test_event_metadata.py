@@ -4,8 +4,9 @@ Unit tests for communication.models.event_metadata.
 
 from __future__ import annotations
 
-import pytest
 from datetime import datetime, timezone
+
+import pytest
 
 from communication.models import EventMetadata, EventPriority
 

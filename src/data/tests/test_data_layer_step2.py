@@ -12,12 +12,12 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from data.models.market_tick import MarketTick
-from data.models.feature_vector import FeatureVector
-from data.features.feature_engineer import FeatureEngineer
 from data.events.feature_vector_event import FeatureVectorEvent
-from data.pipeline import DataPipeline
+from data.features.feature_engineer import FeatureEngineer
+from data.models.feature_vector import FeatureVector
+from data.models.market_tick import MarketTick
 from data.normalizers.market_normalizer import MarketNormalizer
+from data.pipeline import DataPipeline
 
 TS = datetime(2024, 1, 15, 14, 30, 0, tzinfo=timezone.utc)
 

@@ -89,9 +89,10 @@ class YFinanceProvider:
                 TorProxySession as TorProxySessionType,
             )
 
-        self._tor: "TorProxySessionType | None" = None
+        self._tor: TorProxySessionType | None = None
         if use_tor:
             import os
+
             from data.providers.tor_session import TorProxySession
 
             # Port 9150 = Tor Browser (Windows), 9050 = tor daemon (Linux/EC2)

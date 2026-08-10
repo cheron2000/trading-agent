@@ -224,4 +224,4 @@ class EventMetadata:
 
         Must NOT mutate state.
         """
-        return None
+        return

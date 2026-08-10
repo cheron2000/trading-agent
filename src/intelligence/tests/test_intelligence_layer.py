@@ -11,14 +11,14 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from intelligence.models.decision import Decision
+from data.models.feature_vector import FeatureVector
+from intelligence.agent.llm_agent import LLMAgent
+from intelligence.agent.prompt_builder import PromptBuilder
+from intelligence.context.memory import DecisionMemory
 from intelligence.events.decision_event import DecisionEvent
+from intelligence.models.decision import Decision
 from intelligence.strategies.i_strategy import IStrategy
 from intelligence.strategies.rule_based import SimpleRuleStrategy
-from intelligence.agent.prompt_builder import PromptBuilder
-from intelligence.agent.llm_agent import LLMAgent
-from intelligence.context.memory import DecisionMemory
-from data.models.feature_vector import FeatureVector
 
 TS = datetime(2024, 1, 15, 14, 30, 0, tzinfo=timezone.utc)
 

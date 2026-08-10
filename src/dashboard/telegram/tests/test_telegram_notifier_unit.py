@@ -16,11 +16,11 @@ so that patch() targets resolve correctly.
 
 from __future__ import annotations
 
-import sys
 import os
+import sys
 import unittest
+from collections.abc import Callable
 from datetime import datetime, timezone
-from typing import Callable
 from unittest.mock import AsyncMock, MagicMock, patch
 
 # ---------------------------------------------------------------------------
@@ -36,11 +36,10 @@ if _SRC not in sys.path:
 # We mock Application before the very first import so the module-level
 # import of telegram.ext succeeds without a real bot token.
 # ---------------------------------------------------------------------------
-from foundation.base_event import BaseEvent  # noqa: E402
-from communication.models.subscription import Subscription  # noqa: E402
-import dashboard.telegram.telegram_notifier as _tn_module  # noqa: E402
-from dashboard.telegram.telegram_notifier import TelegramNotifier  # noqa: E402
-
+import dashboard.telegram.telegram_notifier as _tn_module
+from communication.models.subscription import Subscription
+from dashboard.telegram.telegram_notifier import TelegramNotifier
+from foundation.base_event import BaseEvent
 
 # ---------------------------------------------------------------------------
 # Simple event stub — lets us attach arbitrary fields without inheriting

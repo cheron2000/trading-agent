@@ -20,8 +20,8 @@ from __future__ import annotations
 import statistics
 from typing import Any, ClassVar
 
-from data.models.market_tick import MarketTick
 from data.models.feature_vector import FeatureVector
+from data.models.market_tick import MarketTick
 
 
 class FeatureEngineer:
