@@ -94,11 +94,15 @@ class YFinanceProvider:
             import os
             from data.providers.tor_session import TorProxySession
 
-            self._tor = TorProxySession(control_password=tor_control_password)
-            # Set env-level proxy so yfinance's internal requests picks it up
-            os.environ["HTTP_PROXY"] = "socks5h://127.0.0.1:9150"
-            os.environ["HTTPS_PROXY"] = "socks5h://127.0.0.1:9150"
-            _log.info("Tor proxy set via environment variables (port 9150).")
+            # Port 9150 = Tor Browser (Windows), 9050 = tor daemon (Linux/EC2)
+            _socks_port = int(os.environ.get("TOR_SOCKS_PORT", "9150"))
+            _ctrl_port = int(os.environ.get("TOR_CONTROL_PORT", "9151"))
+            self._tor = TorProxySession(
+                control_password=tor_control_password,
+                socks_port=_socks_port,
+                control_port=_ctrl_port,
+            )
+            _log.info("Tor proxy active on SOCKS port %d.", _socks_port)
 
     # ------------------------------------------------------------------
     # IDataProvider implementation

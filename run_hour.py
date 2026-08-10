@@ -83,6 +83,9 @@ from foundation.base_event import BaseEvent
 from intelligence.events.decision_event import DecisionEvent
 from intelligence.models.decision import Decision
 from intelligence.strategies.rule_based import SimpleRuleStrategy
+from intelligence.candle.candle_strategy import CandleStrategy
+from data.features.regime_classifier import classify_regime
+from intelligence.memory.trade_memory import TradeMemory
 
 # Import LLMStrategy conditionally for isinstance checks
 try:
@@ -229,7 +232,7 @@ else:
 # Try live yfinance first, fall back to fixture data if it fails
 from data.providers.market_provider import MarketDataProvider
 try:
-    provider = YFinanceProvider(symbols=SYMBOLS, ttl_seconds=55.0, use_tor=False)
+    provider = YFinanceProvider(symbols=SYMBOLS, ttl_seconds=55.0, use_tor=True)
     # Test real fetch — raise Exception if rate-limited or unavailable
     test_tick = provider.fetch(SYMBOLS[0])
     if not test_tick or test_tick.price <= 0:
@@ -253,6 +256,13 @@ news_agg = NewsAggregator(
     cache_ttl=300.0,
 )
 print(f"[OK] News aggregator initialized: {news_agg.status()}\n")
+
+# --- L4 Candle Intelligence Layer ---
+from load_keys import load_ollama_model, load_ollama_host as _load_ollama_host
+_candle_strategy = CandleStrategy(
+    ollama_host=_load_ollama_host(),
+    ollama_model=load_ollama_model(),
+)
 
 # --- L4 Intelligence ---
 # Dynamic strategy selection based on --strategy flag
@@ -319,6 +329,10 @@ hold_cycles_tracker: dict[str, int] = {}
 trailing_stops: dict[str, float] = {}  # symbol → highest stop price seen
 _daily_trend_cache: dict[str, tuple[str, float]] = {}  # sym -> (trend, timestamp)
 _news_context_cache: dict[str, str] = {}  # symbol -> latest news context string
+_entry_rationales: dict[str, str] = {}  # symbol -> rationale at entry time
+_entry_indicators: dict[str, dict] = {}  # symbol -> indicators at entry time
+trade_memory = TradeMemory()
+print(f"[OK] Trade Memory loaded: {trade_memory.total_entries} past reflections")
 
 # Restore entry prices from existing positions (for restart resilience)
 for sym, (qty, avg_price) in portfolio.all_positions().items():
@@ -558,6 +572,14 @@ while not shutdown:
 
             ticks = provider.fetch_recent(symbol, n=26)
             fv = engineer.compute(ticks)
+
+            # --- Dynamic ADX Regime Classification ---
+            prices_for_regime = [t.price for t in ticks]
+            if len(prices_for_regime) >= 16:
+                regime_info = classify_regime(prices_for_regime)
+                fv.features["regime_label"] = regime_info["regime_label"]
+                fv.features["regime_confidence"] = regime_info["regime_confidence"]
+                fv.features["adx"] = regime_info["adx"]
             fv_event = FeatureVectorEvent(
                 event_type="data.feature_vector",
                 symbol=fv.symbol,
@@ -586,6 +608,7 @@ while not shutdown:
             if hasattr(strategy, 'evaluate_with_context'):
                 _pos_entry = entry_prices.get(sym)
                 _pos_price = tick.price
+                _trade_reflections = trade_memory.format_for_prompt(sym, limit=3)
                 pos_context = {
                     "has_position": sym in entry_prices,
                     "entry_price": _pos_entry or 0.0,
@@ -594,6 +617,8 @@ while not shutdown:
                                if _pos_entry and _pos_entry > 0 else 0.0,
                     "hold_cycles": hold_cycles_tracker.get(sym, 0),
                     "news_context": _news_context_cache.get(sym, ""),
+                    "daily_trend": daily_trend,
+                    "trade_reflections": _trade_reflections,
                 }
                 print(f"  [{symbol}] Asking {strategy.strategy_id}...")
                 decision = strategy.evaluate_with_context(fv, position_context=pos_context)
@@ -650,6 +675,27 @@ while not shutdown:
                         strategy_id="trailing-stop",
                     )
 
+            # --- Candle Intelligence Layer (CIL) ---
+            # Self-throttled via 10-min TTL — safe to call every cycle
+            try:
+                candle_decision = _candle_strategy.evaluate(symbol)
+                if candle_decision.action != "HOLD" and candle_decision.confidence >= 0.60:
+                    candle_event = DecisionEvent(
+                        event_type="intelligence.decision",
+                        symbol=candle_decision.symbol,
+                        action=candle_decision.action,
+                        confidence=candle_decision.confidence,
+                        rationale=candle_decision.rationale,
+                        strategy_id=candle_decision.strategy_id,
+                    )
+                    bus.publish(candle_event)
+                    print(f"  [{symbol}] CIL: {candle_decision.action} (conf={candle_decision.confidence:.2f}) — {candle_decision.rationale[:80]}")
+                    # If CIL has a strong signal and main strategy is HOLD, use CIL
+                    if decision.action == "HOLD" and candle_decision.confidence >= 0.65:
+                        decision = candle_decision
+            except Exception as _cil_exc:
+                _log.warning("CIL error for %s: %s", symbol, _cil_exc)
+
             decision_event = DecisionEvent(
                 event_type="intelligence.decision",
                 symbol=decision.symbol,
@@ -687,6 +733,17 @@ while not shutdown:
                 hold_cycles_tracker.pop(sym, None)
                 trailing_stops.pop(sym, None)
                 pnl = (fill.fill_price - ep) * fill.quantity
+
+                # Record completed trade in memory for self-reflection
+                trade_memory.record_trade(
+                    symbol=sym,
+                    entry_price=ep,
+                    exit_price=fill.fill_price,
+                    quantity=fill.quantity,
+                    entry_rationale=_entry_rationales.pop(sym, ""),
+                    exit_rationale=decision.rationale[:200],
+                    entry_indicators=_entry_indicators.pop(sym, None),
+                )
                 metrics.record_fill(fill, entry_price=ep)
                 journal.record(fill, decision_event)
                 total_sell += 1
@@ -717,6 +774,14 @@ while not shutdown:
                 bus.publish(fill)
                 entry_prices[sym] = fill.fill_price
                 hold_cycles_tracker[sym] = 0
+                _entry_rationales[sym] = decision.rationale[:200]
+                _entry_indicators[sym] = {
+                    "rsi": fv.features.get("rsi", 0.0),
+                    "regime_label": fv.features.get("regime_label", "unknown"),
+                    "adx": fv.features.get("adx", 0.0),
+                    "macd_hist": fv.features.get("macd_histogram", 0.0),
+                    "bb_position": fv.features.get("bb_position", 0.5),
+                }
                 # FIX: record BUY fills in the journal (was missing before)
                 metrics.record_fill(fill, entry_price=fill.fill_price)
                 journal.record(fill, decision_event)
