@@ -536,7 +536,7 @@ while not shutdown:
             trading_halted = True
             msg = f"CIRCUIT BREAKER: Daily loss limit hit ({daily_pnl_pct*100:.2f}%). Trading halted for this session."
             print(f"\n  [!!!] {msg}\n")
-            ds.push_warning(msg)
+            ds.push_warning("circuit-breaker", msg)
 
     if trading_halted:
         # Still update dashboard but skip all trading
@@ -801,7 +801,7 @@ while not shutdown:
     try:
         _push_dashboard_state(cycle)
     except Exception as exc:
-        ds.push_warning(f"Dashboard state update failed: {exc}")
+        ds.push_warning("dashboard", f"Dashboard state update failed: {exc}")
         print(f"  [WARNING] Dashboard state update failed: {exc}")
 
     # --- Wait for next cycle (respects kill switch + manual tick) ---
