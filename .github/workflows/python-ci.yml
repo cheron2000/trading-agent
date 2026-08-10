@@ -23,7 +23,9 @@ jobs:
         run: black --check src/
 
       - name: MyPy type check
-        run: mypy src/ --no-error-summary
+        run: mypy --config-file mypy.ini src/ --no-error-summary
+        env:
+          PYTHONPATH: src
 
       - name: Pytest with coverage
         run: pytest --cov=src --cov-report=term-missing --cov-fail-under=60
