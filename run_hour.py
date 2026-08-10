@@ -376,8 +376,41 @@ def _handle_signal(sig, frame):
     global shutdown
     print("\n\n[!] Interrupted — generating final report...\n")
     shutdown = True
+    if _ollama_proc is not None:
+        _ollama_proc.terminate()
 
 signal.signal(signal.SIGINT, _handle_signal)
+
+# --- Start Ollama (auto-managed) ---
+import subprocess as _sp
+import urllib.request as _ur
+
+_ollama_proc = None
+
+def _ollama_running() -> bool:
+    try:
+        _ur.urlopen("http://localhost:11434", timeout=2)
+        return True
+    except Exception:
+        return False
+
+if not _ollama_running():
+    print("Starting Ollama...")
+    _ollama_proc = _sp.Popen(
+        ["ollama", "serve"],
+        stdout=_sp.DEVNULL,
+        stderr=_sp.DEVNULL,
+    )
+    # Wait up to 10s for it to be ready
+    for _ in range(10):
+        time.sleep(1)
+        if _ollama_running():
+            print("[OK] Ollama started\n")
+            break
+    else:
+        print("[WARN] Ollama did not start in time — LLM fallback may fail\n")
+else:
+    print("[OK] Ollama already running\n")
 
 # --- Start web dashboard server ---
 _dash_app = create_app()
@@ -821,6 +854,11 @@ while not shutdown:
 
 # --- Teardown ---
 ds.set_stopped()
+
+# Stop Ollama if we started it
+if _ollama_proc is not None:
+    _ollama_proc.terminate()
+    print("[OK] Ollama stopped")
 
 # --- Final Report (Calculate metrics FIRST before using them) ---
 ended_at = datetime.now(timezone.utc)
