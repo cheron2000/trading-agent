@@ -23,7 +23,10 @@ _log = logging.getLogger(__name__)
 
 # Default path for the trade memory store
 _DEFAULT_MEMORY_PATH = (
-    Path(__file__).resolve().parents[3] / "data_store" / "memory" / "trade_reflections.jsonl"
+    Path(__file__).resolve().parents[3]
+    / "data_store"
+    / "memory"
+    / "trade_reflections.jsonl"
 )
 
 
@@ -53,7 +56,9 @@ class TradeMemory:
                     line = line.strip()
                     if line:
                         self._entries.append(json.loads(line))
-            _log.info("Loaded %d trade reflections from %s", len(self._entries), self._path)
+            _log.info(
+                "Loaded %d trade reflections from %s", len(self._entries), self._path
+            )
         except Exception as exc:
             _log.warning("Failed to load trade memory from %s: %s", self._path, exc)
 
@@ -81,7 +86,9 @@ class TradeMemory:
         Returns:
             The recorded memory entry dict.
         """
-        pnl_pct = ((exit_price - entry_price) / entry_price * 100) if entry_price > 0 else 0.0
+        pnl_pct = (
+            ((exit_price - entry_price) / entry_price * 100) if entry_price > 0 else 0.0
+        )
         pnl_usd = (exit_price - entry_price) * quantity
         outcome = "WIN" if pnl_pct > 0 else "LOSS"
 
@@ -115,7 +122,10 @@ class TradeMemory:
             "outcome": outcome,
             "entry_rationale": entry_rationale[:200],
             "exit_rationale": exit_rationale[:200],
-            "indicators": {k: round(v, 4) if isinstance(v, float) else v for k, v in indicators.items()},
+            "indicators": {
+                k: round(v, 4) if isinstance(v, float) else v
+                for k, v in indicators.items()
+            },
             "lesson": lesson,
         }
 
@@ -159,7 +169,9 @@ class TradeMemory:
                 f"({r['pnl_pct']:+.1f}%)"
             )
             lines.append(f"    Lesson: {r['lesson'][:150]}")
-        lines.append("Use these lessons to calibrate your confidence for the current setup.")
+        lines.append(
+            "Use these lessons to calibrate your confidence for the current setup."
+        )
         return "\n".join(lines)
 
     def get_stats(self, symbol: str | None = None) -> dict[str, Any]:
@@ -171,9 +183,19 @@ class TradeMemory:
         Returns:
             Dict with total_trades, wins, losses, win_rate, avg_pnl_pct.
         """
-        entries = [e for e in self._entries if e.get("symbol") == symbol] if symbol else self._entries
+        entries = (
+            [e for e in self._entries if e.get("symbol") == symbol]
+            if symbol
+            else self._entries
+        )
         if not entries:
-            return {"total_trades": 0, "wins": 0, "losses": 0, "win_rate": 0.0, "avg_pnl_pct": 0.0}
+            return {
+                "total_trades": 0,
+                "wins": 0,
+                "losses": 0,
+                "win_rate": 0.0,
+                "avg_pnl_pct": 0.0,
+            }
 
         wins = sum(1 for e in entries if e.get("outcome") == "WIN")
         losses = len(entries) - wins

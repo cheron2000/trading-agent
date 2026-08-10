@@ -5,6 +5,7 @@ Fetches last N OHLCV candles for a symbol via Yahoo Finance JSON API
 routed through Tor SOCKS5 proxy (port 9150). Self-caching with TTL.
 No project layer imports.
 """
+
 from __future__ import annotations
 
 import logging
@@ -44,6 +45,7 @@ class CandleFetcher:
 
         try:
             import requests
+
             session = requests.Session()
             session.proxies = {"http": _TOR_PROXY, "https": _TOR_PROXY}
 
@@ -58,26 +60,30 @@ class CandleFetcher:
             result = data["chart"]["result"][0]
             timestamps = result.get("timestamp", [])
             q = result["indicators"]["quote"][0]
-            opens   = q.get("open",   [])
-            highs   = q.get("high",   [])
-            lows    = q.get("low",    [])
-            closes  = q.get("close",  [])
+            opens = q.get("open", [])
+            highs = q.get("high", [])
+            lows = q.get("low", [])
+            closes = q.get("close", [])
             volumes = q.get("volume", [])
 
             candles: list[dict] = []
             for i in range(len(closes)):
                 if closes[i] is None or opens[i] is None:
                     continue
-                candles.append({
-                    "open":      float(opens[i]  or closes[i]),
-                    "high":      float(highs[i]  or closes[i]),
-                    "low":       float(lows[i]   or closes[i]),
-                    "close":     float(closes[i]),
-                    "volume":    float(volumes[i] or 0) if i < len(volumes) else 0.0,
-                    "timestamp": str(timestamps[i]) if i < len(timestamps) else str(i),
-                })
+                candles.append(
+                    {
+                        "open": float(opens[i] or closes[i]),
+                        "high": float(highs[i] or closes[i]),
+                        "low": float(lows[i] or closes[i]),
+                        "close": float(closes[i]),
+                        "volume": float(volumes[i] or 0) if i < len(volumes) else 0.0,
+                        "timestamp": (
+                            str(timestamps[i]) if i < len(timestamps) else str(i)
+                        ),
+                    }
+                )
 
-            candles = candles[-self._n_candles:]
+            candles = candles[-self._n_candles :]
             self._cache[symbol] = (candles, now)
             return candles
 
