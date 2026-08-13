@@ -68,104 +68,94 @@ def call_groq(api_key: str, messages: list, json_mode: bool = False) -> tuple[bo
 
     t0 = time.monotonic()
     try:
-        direct_opener = urllib.request.build_opener(
-            urllib.request.ProxyHandler({})  # bypass Tor/system proxy
-        )
-        with direct_opener.open(req, timeout=15) as resp:
-            latency = (time.monotonic() - t0) * 1000
+        with urlopen(req, timeout=12) as resp:
+            elapsed = (time.monotonic() - t0) * 1000
             data = json.loads(resp.read().decode("utf-8"))
-            content = data["choices"][0]["message"]["content"].strip()
-            return True, content, latency
-    except HTTPError as exc:
-        latency = (time.monotonic() - t0) * 1000
-        body_text = exc.read().decode("utf-8", errors="replace")
-        return False, f"HTTP {exc.code}: {body_text[:200]}", latency
-    except URLError as exc:
-        latency = (time.monotonic() - t0) * 1000
-        return False, f"Network error: {exc}", latency
+            content = data["choices"][0]["message"]["content"]
+            return True, content, elapsed
+    except HTTPError as err:
+        elapsed = (time.monotonic() - t0) * 1000
+        body_str = err.read().decode("utf-8", errors="replace")
+        try:
+            err_json = json.loads(body_str)
+            msg = err_json.get("error", {}).get("message", body_str)
+        except Exception:
+            msg = body_str
+        return False, f"HTTP {err.code}: {msg}", elapsed
+    except URLError as err:
+        elapsed = (time.monotonic() - t0) * 1000
+        return False, f"Network error: {err.reason}", elapsed
+    except Exception as err:
+        elapsed = (time.monotonic() - t0) * 1000
+        return False, f"Unexpected error: {err}", elapsed
 
 
 def test_basic(api_key: str) -> tuple[bool, str, float]:
-    """Test 1: basic connectivity and response."""
-    return call_groq(api_key, [
-        {"role": "user", "content": "Reply with the single word: CONNECTED"}
-    ])
+    """Test 1: Ping API with 'ping' prompt."""
+    messages = [{"role": "user", "content": "Reply with 'pong' only."}]
+    ok, text, latency = call_groq(api_key, messages)
+    if ok:
+        snippet = text.strip()[:60]
+        return True, f"Response: {snippet!r}", latency
+    return False, text, latency
 
 
 def test_json_mode(api_key: str) -> tuple[bool, str, float]:
-    """Test 2: JSON mode output."""
-    ok, text, latency = call_groq(
-        api_key,
-        [{"role": "user", "content": 'Return this exact JSON: {"status": "ok", "model": "groq"}'}],
-        json_mode=True,
-    )
+    """Test 2: Enforce JSON response format."""
+    messages = [
+        {"role": "system", "content": "You are a helper that outputs JSON only."},
+        {"role": "user",   "content": "Return a JSON object with keys 'status' (string) and 'code' (integer 200)."},
+    ]
+    ok, text, latency = call_groq(api_key, messages, json_mode=True)
     if not ok:
         return False, text, latency
     try:
         parsed = json.loads(text)
-        return True, f"Valid JSON — keys: {list(parsed.keys())}", latency
+        return True, f"Valid JSON: {parsed}", latency
     except json.JSONDecodeError:
-        return False, f"Invalid JSON response: {text[:100]}", latency
+        return False, f"Not valid JSON: {text!r}", latency
 
 
 def test_trading_decision(api_key: str) -> tuple[bool, str, float]:
-    """Test 3: real trading prompt → valid BUY/SELL/HOLD decision."""
-    features_str = json.dumps(
-        {k: round(v, 4) for k, v in sorted(FAKE_FEATURES.items())}, indent=2
-    )
-    prompt = (
-        "You are a quantitative trading assistant. "
-        "Analyze the provided market features and respond with a JSON object only. "
-        "Your response must be valid JSON with exactly these keys: "
-        '"action" (one of: BUY, SELL, HOLD), '
-        '"confidence" (float between 0.0 and 1.0), '
-        '"rationale" (brief string explanation). '
-        "Do not include any text outside the JSON object.\n\n"
-        f"Symbol: AAPL\n"
-        f"Features:\n{features_str}\n\n"
-        "Respond with JSON only:"
-    )
+    """Test 3: Pass a real feature vector prompt and check decision structure."""
+    prompt = f"""You are the LLM strategy module for an algorithmic trading system.
+Given the following features for TSLA:
+Price: ${FAKE_FEATURES['price_latest']} (Change: {FAKE_FEATURES['price_change_pct']}%)
+Mean:  ${FAKE_FEATURES['price_mean']}   Std: ${FAKE_FEATURES['price_std']}
+Volume: {FAKE_FEATURES['volume_mean']:,}
+High:  ${FAKE_FEATURES['high']}   Low: ${FAKE_FEATURES['low']}
 
-    ok, text, latency = call_groq(
-        api_key,
-        [
-            {"role": "system", "content": "You are a quantitative trading assistant. Always respond with valid JSON only."},
-            {"role": "user", "content": prompt},
-        ],
-        json_mode=True,
-    )
+Respond with a JSON object containing:
+  "action": "BUY" | "SELL" | "HOLD",
+  "confidence": <float 0.0-1.0>,
+  "rationale": "<1-2 sentence explanation citing specific numbers>"
+"""
+    messages = [
+        {"role": "system", "content": "You are an AI financial analyst. Respond with JSON only."},
+        {"role": "user",   "content": prompt},
+    ]
+    ok, text, latency = call_groq(api_key, messages, json_mode=True)
     if not ok:
         return False, text, latency
-
     try:
         parsed = json.loads(text)
-        action = parsed.get("action", "")
-        confidence = parsed.get("confidence", -1)
-        rationale = parsed.get("rationale", "")
-
-        if action not in ("BUY", "SELL", "HOLD"):
-            return False, f"Invalid action '{action}' — must be BUY/SELL/HOLD", latency
-        if not isinstance(confidence, (int, float)) or not (0.0 <= float(confidence) <= 1.0):
-            return False, f"Invalid confidence '{confidence}' — must be 0.0–1.0", latency
-        if not rationale:
-            return False, "Missing rationale", latency
-
-        return True, (
-            f"action={action}  confidence={float(confidence):.2f}\n"
-            f"          rationale: {rationale[:80]}"
-        ), latency
-    except json.JSONDecodeError:
-        return False, f"Invalid JSON: {text[:120]}", latency
+        action = parsed.get("action", "").upper()
+        conf   = parsed.get("confidence", 0.0)
+        rat    = parsed.get("rationale", "")
+        if action in ("BUY", "SELL", "HOLD") and 0.0 <= float(conf) <= 1.0:
+            msg = f"Decision: {BOLD}{action}{RESET} (conf: {conf:.2f}) — {rat[:80]}..."
+            return True, msg, latency
+        return False, f"Invalid decision fields: {parsed}", latency
+    except Exception as err:
+        return False, f"Failed to parse decision: {err} (raw: {text!r})", latency
 
 
 def main() -> None:
-    # Resolve API key
     if len(sys.argv) > 1:
         api_key = sys.argv[1].strip()
-        source = "command line"
+        source  = "CLI argument"
     else:
         try:
-            sys.path.insert(0, str(Path(__file__).parent))
             from load_keys import load_groq_key
             api_key, model = load_groq_key()
             if not api_key:
@@ -179,9 +169,9 @@ def main() -> None:
 
     masked = f"{api_key[:8]}{'*' * max(0, len(api_key)-12)}{api_key[-4:]}"
 
-    print(f"\n{BOLD}{'='*58}{RESET}")
-    print(f"{BOLD}  Groq API Key Test{RESET}")
-    print(f"{BOLD}{'='*58}{RESET}")
+    print(f"\n==========================================================")
+    print(f"  Groq API Key Test")
+    print(f"==========================================================")
     print(f"  Key:    {CYAN}{masked}{RESET}")
     print(f"  Source: {source}")
     print(f"  Model:  {MODEL}\n")
@@ -195,25 +185,24 @@ def main() -> None:
     passed = 0
     for i, (label, fn) in enumerate(tests):
         ok, msg, latency = fn()
-        icon = f"{GREEN}✓ PASS{RESET}" if ok else f"{RED}✗ FAIL{RESET}"
+        icon = f"{GREEN}[OK] PASS{RESET}" if ok else f"{RED}[X] FAIL{RESET}"
         print(f"  [{i+1}/3] {label:<28} {icon}  ({latency:.0f}ms)")
-        # Multi-line messages
         for line in msg.split("\n"):
             print(f"          {line}")
         if ok:
             passed += 1
         print()
 
-    print(f"{'─'*58}")
+    print("=" * 58)
     if passed == 3:
-        print(f"  {GREEN}{BOLD}✓ Groq key fully operational — {passed}/3 tests passed.{RESET}")
-        print(f"  LLM trading decisions are ENABLED.")
-        print(f"  Run:  python run_hour.py")
+        print(f"  {GREEN}{BOLD}[OK] Groq key fully operational — {passed}/3 tests passed.{RESET}")
+        print("  LLM trading decisions are ENABLED.")
+        print("  Run:  python run_hour.py")
     elif passed > 0:
-        print(f"  {YELLOW}{BOLD}⚠ Partial — {passed}/3 tests passed.{RESET}")
+        print(f"  {YELLOW}{BOLD}[!] Partial — {passed}/3 tests passed.{RESET}")
     else:
-        print(f"  {RED}{BOLD}✗ Key not working — check key and network.{RESET}")
-    print(f"{BOLD}{'='*58}{RESET}\n")
+        print(f"  {RED}{BOLD}[X] Key not working — check key and network.{RESET}")
+    print("=" * 58)
 
 
 if __name__ == "__main__":

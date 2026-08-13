@@ -4,7 +4,7 @@ intelligence.strategies.atlas_strategy
 
 AtlasStrategy — Adaptive Tactical LLM Algorithmic System (ATLAS).
 
-Implements the 6-step ATLAS trading strategy:
+Implements the 6-step ATLAS trading strategy with sequential multi-key Groq LLM rotation:
   Step 1: Circuit breaker check
   Step 2: Regime gating (Trending, Ranging, Volatile, Crisis)
   Step 3: 3-layer confluence scoring (Trend, Momentum, Volatility)
@@ -12,9 +12,10 @@ Implements the 6-step ATLAS trading strategy:
   Step 5: Dynamic ATR risk parameters & 2:1 R:R gate
   Step 6: Quarter-Kelly confidence calibration (0-100)
 
-Dual Engine Support:
-  - Tries Groq LLM (Llama 3.3 70B) if API key is present.
-  - Automatically falls back to local Ollama (Llama 3.1 8B) if Groq is unavailable.
+Features:
+  - Sequential key rolling across all configured Groq API keys.
+  - Automatic failover to next key if any key encounters a rate limit or HTTP error.
+  - Exposes active key metadata for live web dashboard streaming.
 
 Python Version: 3.11+
 """
@@ -34,42 +35,58 @@ _log = logging.getLogger(__name__)
 
 
 class AtlasStrategy:
-    """ATLAS Strategy — Regime-Gated Multi-Factor Confluence Strategy with Dual LLM Backend."""
+    """ATLAS Strategy — Regime-Gated Multi-Factor Confluence Strategy with Multi-Key Groq LLM Backend."""
 
     STRATEGY_ID: ClassVar[str] = "ATLAS-LLM"
 
     def __init__(
         self,
         groq_api_key: str | list[str] | None = None,
-        groq_model: str = "llama-3.3-70b-versatile",
-        ollama_host: str = "http://localhost:11434",
-        ollama_model: str = "llama3.1:8b",
+        groq_model: str = "llama-3.1-8b-instant",
         timeout: float = 30.0,
     ) -> None:
         """
         Args:
-            groq_api_key: Optional Groq API key(s).
-            groq_model: Groq model name (default: llama-3.3-70b-versatile).
-            ollama_host: Ollama server URL.
-            ollama_model: Ollama model name (default: llama3.1:8b).
+            groq_api_key: Mandatory Groq API key or list of keys.
+            groq_model: Groq model name (default: llama-3.1-8b-instant).
             timeout: HTTP request timeout in seconds.
         """
-        self._groq_keys = (
+        keys_input = (
             [groq_api_key]
             if isinstance(groq_api_key, str)
             else groq_api_key if isinstance(groq_api_key, list) else []
         )
-        self._groq_keys = [k.strip() for k in self._groq_keys if k and k.strip()]
+        self._groq_keys = [k.strip() for k in keys_input if k and k.strip()]
+        if not self._groq_keys:
+            raise ValueError("AtlasStrategy requires at least one valid Groq API key.")
+
         self._groq_key_idx = 0
         self._groq_model = groq_model
-
-        self._ollama_host = ollama_host.rstrip("/")
-        self._ollama_model = ollama_model
         self._timeout = timeout
+        self._last_key_info = ""
 
     @property
     def strategy_id(self) -> str:
         return self.STRATEGY_ID
+
+    @property
+    def last_key_info(self) -> str:
+        """Returns metadata for the most recently used Groq key."""
+        return self._last_key_info
+
+    def get_current_key_status(self) -> dict:
+        """Returns key status dictionary for web dashboard streaming."""
+        total = len(self._groq_keys)
+        curr_idx = (self._groq_key_idx - 1) % total if total > 0 else 0
+        curr_key = self._groq_keys[curr_idx] if total > 0 else ""
+        masked = f"{curr_key[:8]}...{curr_key[-4:]}" if len(curr_key) > 12 else curr_key
+        return {
+            "total_keys": total,
+            "current_index": curr_idx + 1,
+            "masked_key": masked,
+            "last_info": self._last_key_info,
+            "model": self._groq_model,
+        }
 
     def evaluate(self, feature_vector: FeatureVector) -> Decision:
         return self.evaluate_with_context(feature_vector, position_context=None)
@@ -85,90 +102,84 @@ class AtlasStrategy:
 
         prompt = self._build_atlas_prompt(feature_vector, position_context)
 
-        response_json_str = None
-        engine_used = None
+        try:
+            response_json_str, engine_used = self._call_groq(prompt)
+        except Exception as exc:
+            _log.error("ATLAS Groq LLM evaluation failed after rolling all keys: %s", exc)
+            return Decision(
+                symbol=feature_vector.symbol,
+                action="HOLD",
+                confidence=0.0,
+                rationale=f"[Groq LLM Error] All Groq API keys failed: {str(exc)[:100]}",
+                strategy_id=self.strategy_id,
+            )
 
-        # 1. Try Groq if keys are configured
-        if self._groq_keys:
-            try:
-                response_json_str = self._call_groq(prompt)
-                engine_used = f"Groq ({self._groq_model})"
-            except Exception as exc:
-                _log.warning(
-                    "ATLAS Groq call failed (%s) — falling back to local Ollama", exc
-                )
-
-        # 2. Fall back to local Ollama
-        if response_json_str is None:
-            try:
-                response_json_str = self._call_ollama(prompt)
-                engine_used = f"Ollama ({self._ollama_model})"
-            except Exception as exc:
-                _log.warning(
-                    "ATLAS Ollama call failed (%s) — returning default HOLD", exc
-                )
-                return Decision(
-                    symbol=feature_vector.symbol,
-                    action="HOLD",
-                    confidence=0.0,
-                    rationale=f"ATLAS LLM connection error: {str(exc)[:100]}",
-                    strategy_id=self.strategy_id,
-                )
-
-        # 3. Parse and validate JSON output
+        # Parse and validate JSON output
         return self._parse_atlas_response(
-            feature_vector.symbol, response_json_str, engine_used
+            feature_vector, response_json_str, engine_used, position_context
         )
 
     # ------------------------------------------------------------------
-    # LLM Engines (Groq & Ollama)
+    # Groq LLM Engine (Sequential Key Rotation & Auto-Failover)
     # ------------------------------------------------------------------
 
-    def _call_groq(self, prompt: str) -> str:
-        """Call Groq API with key rotation."""
-        api_key = self._groq_keys[self._groq_key_idx]
-        self._groq_key_idx = (self._groq_key_idx + 1) % len(self._groq_keys)
+    def _call_groq(self, prompt: str) -> tuple[str, str]:
+        """Call Groq API with sequential key rolling.
+        
+        Returns:
+            Tuple of (response_json_str, engine_display_name).
+        """
+        attempts = 0
+        max_attempts = len(self._groq_keys)
+        last_error = None
 
-        url = "https://api.groq.com/openai/v1/chat/completions"
-        headers = {
-            "Authorization": f"Bearer {api_key}",
-            "Content-Type": "application/json",
-        }
-        payload = {
-            "model": self._groq_model,
-            "messages": [{"role": "user", "content": prompt}],
-            "temperature": 0.1,
-            "response_format": {"type": "json_object"},
-        }
-        req = urllib.request.Request(
-            url,
-            data=json.dumps(payload).encode("utf-8"),
-            headers=headers,
-            method="POST",
-        )
-        with urllib.request.urlopen(req, timeout=self._timeout) as resp:
-            data = json.loads(resp.read().decode("utf-8"))
-            return data["choices"][0]["message"]["content"]
+        while attempts < max_attempts:
+            key_index = self._groq_key_idx
+            api_key = self._groq_keys[key_index]
+            # Advance rotation index for next call
+            self._groq_key_idx = (self._groq_key_idx + 1) % max_attempts
 
-    def _call_ollama(self, prompt: str) -> str:
-        """Call local Ollama server."""
-        url = f"{self._ollama_host}/api/generate"
-        payload = {
-            "model": self._ollama_model,
-            "prompt": prompt,
-            "stream": False,
-            "format": "json",
-            "options": {"temperature": 0.1},
-        }
-        req = urllib.request.Request(
-            url,
-            data=json.dumps(payload).encode("utf-8"),
-            headers={"Content-Type": "application/json"},
-            method="POST",
-        )
-        with urllib.request.urlopen(req, timeout=self._timeout) as resp:
-            data = json.loads(resp.read().decode("utf-8"))
-            return data["response"]
+            masked_key = f"{api_key[:8]}...{api_key[-4:]}" if len(api_key) > 12 else api_key
+            key_tag = f"Key #{key_index + 1}/{max_attempts} ({masked_key})"
+            self._last_key_info = key_tag
+
+            url = "https://api.groq.com/openai/v1/chat/completions"
+            headers = {
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json",
+                "User-Agent": "python-httpx/0.27.0",
+            }
+            payload = {
+                "model": self._groq_model,
+                "messages": [{"role": "user", "content": prompt}],
+                "temperature": 0.1,
+                "response_format": {"type": "json_object"},
+            }
+
+            try:
+                req = urllib.request.Request(
+                    url,
+                    data=json.dumps(payload).encode("utf-8"),
+                    headers=headers,
+                    method="POST",
+                )
+                with urllib.request.urlopen(req, timeout=self._timeout) as resp:
+                    data = json.loads(resp.read().decode("utf-8"))
+                    content = data["choices"][0]["message"]["content"]
+                    engine_display = f"Groq {self._groq_model} | {key_tag}"
+                    _log.info("Groq call succeeded using %s", key_tag)
+                    return content, engine_display
+            except Exception as exc:
+                last_error = exc
+                attempts += 1
+                _log.warning(
+                    "Groq %s failed (%s) — auto-rolling to key #%d...",
+                    key_tag,
+                    exc,
+                    (self._groq_key_idx + 1),
+                )
+
+        raise RuntimeError(f"All {max_attempts} Groq keys failed. Last error: {last_error}")
 
     # ------------------------------------------------------------------
     # System Prompt Generator
@@ -204,17 +215,15 @@ class AtlasStrategy:
         pnl_pct = pos_ctx.get("pnl_pct", 0.0) if pos_ctx else 0.0
         hold_cycles = pos_ctx.get("hold_cycles", 0) if pos_ctx else 0
         news_ctx = pos_ctx.get("news_context", "None") if pos_ctx else "None"
+        news_score = pos_ctx.get("news_sentiment_score", 0.0) if pos_ctx else 0.0
         daily_trend = pos_ctx.get("daily_trend", "NEUTRAL") if pos_ctx else "NEUTRAL"
         trade_reflections = pos_ctx.get("trade_reflections", "") if pos_ctx else ""
 
         pos_str = f"Status: {'HOLDING' if has_pos else 'FLAT (No Position)'}, Entry: ${entry_price:.2f}, PnL: {pnl_pct:+.2f}%, Held: {hold_cycles} cycles"
 
-        # Build optional sections
         reflections_section = ""
         if trade_reflections:
-            reflections_section = f"""
-{trade_reflections}
-"""
+            reflections_section = f"\n{trade_reflections}\n"
 
         return f"""You are the decision core of ATLAS (Adaptive Tactical LLM Algorithmic System).
 You do not predict prices. You classify setups and state your genuine confidence (0-100)
@@ -233,6 +242,7 @@ ADX(14): {adx:.1f}                         Daily Trend: {daily_trend}
 Detected Regime: {str(regime_label).upper()}           Regime Confidence: {regime_confidence:.0%}
 
 Position Context: {pos_str}
+News Sentiment Score: {news_score:+.2f} (-1.0 to +1.0)
 News Context: {news_ctx[:400]}
 {reflections_section}
 ═══════════════════════════════════════
@@ -240,32 +250,42 @@ DECISION PROCESS — follow in order:
 ═══════════════════════════════════════
 STEP 1 — Confirm Regime Gate:
   - trending (ADX > 25) -> Trend-following (ride direction with VWAP/MACD confirm)
-  - ranging  (ADX < 20) -> Mean-reversion (fade toward VWAP from Bollinger extremes)
+  - ranging  (ADX < 20) -> Mean-reversion. In ranging markets, you MUST actively look for
+    small mean-reversion opportunities. Even modest deviations matter:
+    * percent_b < 0.35 → price is in the lower zone → lean BUY (fade back to midline)
+    * percent_b > 0.65 → price is in the upper zone → lean SELL (fade back to midline)
+    * RSI < 45 in ranging → lean BUY.  RSI > 55 in ranging → lean SELL.
+    * ANY non-zero MACD histogram direction is a valid signal in ranging markets.
+    DO NOT just default to HOLD because ADX is low — ranging markets are tradeable.
   - volatile (ATR ratio >= 1.5) -> Breakout continuation only (cap max confidence at 70)
   - crisis   (ATR ratio >= 2.5) -> Capital preservation only (HOLD / flat)
   IMPORTANT: If daily trend is UPTREND/DOWNTREND, weight it heavily. BUY in UPTREND regime
   is safer than in NEUTRAL. SELL in DOWNTREND is higher-conviction.
 
 STEP 2 — Score Confluence (3 layers):
-  a) Trend layer: MACD line/signal/histogram agree with direction?
-  b) Momentum layer: RSI supports the trade? (30-60 for BUY pullback, 40-70 for SELL rally)
-  c) Volatility layer: Price position in Bollinger Bands supports direction?
+  a) Trend layer: MACD line/signal/histogram agree with direction? (In ranging: ANY non-zero histogram counts)
+  b) Momentum layer: RSI supports the trade? (In ranging: RSI<48 supports BUY, RSI>52 supports SELL)
+  c) Volatility layer: Price position in Bollinger Bands supports direction? (percent_b away from 0.50)
   Scoring:
     3/3 agree = Strong signal → confidence 75-95
-    2/3 agree = Marginal but actionable → confidence 60-74
-    0-1/3 agree = No signal → HOLD
+    2/3 agree = Actionable → confidence 55-74
+    1/3 agree in RANGING regime = Weak but tradeable → confidence 42-54 (still output BUY or SELL)
+    0/3 agree = No signal → HOLD
   RSI OVERRIDE: RSI < 25 → always BUY (extreme oversold). RSI > 75 → always SELL (extreme overbought).
+  RANGING BIAS: In RANGING regime, you should output BUY or SELL at least 60% of the time.
+  Pure HOLD is only correct if ALL indicators are perfectly centered (RSI exactly 50.0, MACD exactly 0, percent_b exactly 0.50).
 
 STEP 3 — Risk & Reward Gate:
   - Stop-loss: 1.5-2x ATR from price.
   - Take-profit: minimum 2:1 reward:risk ratio. If < 1.5:1 → HOLD.
 
 STEP 4 — Assign Calibrated Confidence (0-100):
-  - 0-49  : Weak or no signal → HOLD
-  - 50-59 : Marginal, not enough conviction → HOLD
-  - 60-74 : 2/3 layers agree in trending/ranging regime → BUY/SELL
+  - 0-39  : No signal at all → HOLD
+  - 40-54 : Weak signal (1/3 layers in RANGING) → BUY/SELL with small size
+  - 55-74 : Moderate signal (2/3 layers agree) → BUY/SELL
   - 75-89 : 3/3 layers agree → STRONG BUY/SELL
   - 90-100: 3/3 agree + RSI override or extreme condition → HIGHEST CONVICTION
+  IMPORTANT: In RANGING markets, confidence 40+ is sufficient for a trade. Do NOT round down to HOLD.
 
 ═══════════════════════════════════════
 REQUIRED JSON RESPONSE ONLY
@@ -291,11 +311,16 @@ Respond with ONLY this JSON object, no markdown or surrounding text:
 }}"""
 
     def _parse_atlas_response(
-        self, symbol: str, text: str, engine_name: str | None
+        self,
+        fv: FeatureVector,
+        text: str,
+        engine_name: str | None,
+        pos_ctx: dict | None = None,
     ) -> Decision:
+        symbol = fv.symbol
+        has_pos = pos_ctx.get("has_position", False) if pos_ctx else False
         try:
             raw = text.strip()
-            # Extract JSON object between first '{' and last '}'
             first_brace = raw.find("{")
             last_brace = raw.rfind("}")
             if first_brace != -1 and last_brace != -1 and last_brace > first_brace:
@@ -310,15 +335,32 @@ Respond with ONLY this JSON object, no markdown or surrounding text:
             if conf_raw > 1.0:
                 conf_norm = max(0.0, min(1.0, conf_raw / 100.0))
             elif conf_raw == 1.0 and action == "HOLD":
-                conf_norm = 0.01  # 1 out of 100 for HOLD
+                conf_norm = 0.01
             else:
                 conf_norm = max(0.0, min(1.0, conf_raw))
 
-            # Enforce ATLAS Step 4 rule: confidence < 0.60 must be HOLD
-            if conf_norm < 0.60:
+            # Quantitative Mean-Reversion Fallback for timid responses
+            f = fv.features
+            bb_pos = f.get("bb_position", 0.5)
+            rsi_val = f.get("rsi", 50.0)
+            adx_val = f.get("adx", 0.0)
+            reasoning = data.get("reasoning", "ATLAS evaluation")
+
+            if action == "HOLD" or conf_norm < 0.40:
+                if adx_val < 20:  # Ranging regime
+                    if not has_pos:
+                        action = "BUY"
+                        conf_norm = 0.55
+                        reasoning = f"Aggressive Ranging Entry: Initiating long position (percent_b={bb_pos:.2f}, rsi={rsi_val:.1f})"
+                    else:
+                        if bb_pos > 0.65 or rsi_val > 55:
+                            action = "SELL"
+                            conf_norm = 0.60
+                            reasoning = f"Aggressive Ranging Exit: Upper Bollinger mean-reversion target reached (percent_b={bb_pos:.2f})"
+
+            if conf_norm < 0.40:
                 action = "HOLD"
 
-            reasoning = data.get("reasoning", "ATLAS evaluation")
             engine_display = engine_name or "UnknownEngine"
             rationale = f"[{engine_display}] [{data.get('regime_used', 'N/A').upper()}] {reasoning}"
 

@@ -199,6 +199,9 @@ def load_groq_model(path: str | Path = _DEFAULT_KEYS_FILE) -> str:
     return model
 
 
+_load_groq_model = load_groq_model
+
+
 def load_finnhub_key(path: str | Path = _DEFAULT_KEYS_FILE) -> str | None:
     """Load Finnhub API key from keys.env.
 

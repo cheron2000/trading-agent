@@ -396,56 +396,7 @@
       font-size: 12px;
       margin-bottom: 4px;
     }
-    .news-text {
-      color: var(--text-muted);
-      font-size: 12px;
-      white-space: pre-wrap;
-      line-height: 1.6;
-    }
-  </style>
-</head>
-<body>
 
-  <!-- Top Navbar -->
-  <header>
-    <div class="brand">
-      <div class="brand-logo">A</div>
-      <div>
-        <div class="brand-title">AI Trading OS</div>
-        <div class="brand-subtitle">Atlas Platform v1.0.1 — Seven Layer Event-Driven Engine</div>
-      </div>
-    </div>
-
-    <div class="controls-group">
-      <div class="status-badge">
-        <span id="pulse-dot" class="pulse-dot"></span>
-        <span id="session-status-text">Disconnected</span>
-      </div>
-
-      <button id="btn-manual-tick" class="btn" onclick="triggerManualTick()">
-        <i data-lucide="play-circle"></i> Trigger Tick
-      </button>
-
-      <select id="strategy-selector" class="select-sm" onchange="changeStrategy(this.value)">
-        <option value="ATLAS" selected>ATLAS Tactical Strategy</option>
-        <option value="OLLAMA">Ollama Local LLM</option>
-        <option value="GROQ-LLM">Groq LLM Strategy</option>
-        <option value="SIMPLE-RULE">Rule-Based Strategy</option>
-      </select>
-
-      <button id="btn-kill" class="btn btn-danger" onclick="triggerKillSwitch()">
-        <i data-lucide="power"></i> Kill Switch
-      </button>
-    </div>
-  </header>
-
-  <!-- App Main Content -->
-  <div class="app-container">
-
-    <!-- Key Metrics Grid -->
-    <div class="metrics-grid">
-      <div class="metric-card">
-        <div class="metric-label">Portfolio Value</div>
         <div class="metric-value val-neu" id="m-pv">$100,000.00</div>
         <div class="metric-sub" id="m-pv-sub">Initial Capital</div>
       </div>
@@ -691,48 +642,7 @@
     }
 
     // Formatting Helpers
-    function fmtMoney(num) {
-      return '$' + parseFloat(num || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    }
-    function fmtPnl(num) {
-      const val = parseFloat(num || 0);
-      const cls = val > 0 ? 'val-pos' : val < 0 ? 'val-neg' : 'val-neu';
-      const sign = val >= 0 ? '+' : '';
-      return `<span class="${cls} mono">${sign}$${Math.abs(val).toFixed(2)}</span>`;
-    }
 
-    // Apply Snapshot Data
-    function applySnapshot(s) {
-      const dot = $('pulse-dot');
-      const st = $('session-status-text');
-
-      if (s.running) {
-        dot.className = 'pulse-dot online';
-        st.textContent = `Live Run — Cycle #${s.cycle || 0}`;
-      } else {
-        dot.className = 'pulse-dot offline';
-        st.textContent = s.kill_requested ? 'Terminated (Kill Switch)' : 'Stopped / Ready';
-      }
-
-      if (s.strategy_mode) {
-        _applyingSnapshot = true;
-        $('strategy-selector').value = s.strategy_mode;
-        _applyingSnapshot = false;
-      }
-
-      // Metric Cards
-      const pv = parseFloat(s.portfolio_value || 0);
-      const initCap = parseFloat(s.initial_capital || 200);
-      $('m-pv').textContent = fmtMoney(pv);
-      if ($('m-pv-sub')) {
-        const unrealized = pv - (s.cash + (s.total_pnl || 0)); // market value diff
-        const unrlzPnl = pv - initCap;
-        const unrlzSign = unrlzPnl >= 0 ? '+' : '';
-        $('m-pv-sub').innerHTML = `Start: $${initCap.toFixed(2)} | Total P&L: <span class="${unrlzPnl >= 0 ? 'val-pos' : 'val-neg'}">${unrlzSign}$${unrlzPnl.toFixed(2)}</span>`;
-      }
-
-      const pnl = parseFloat(s.total_pnl || 0);
-      $('m-pnl').innerHTML = fmtPnl(pnl);
 
       const ret = parseFloat(s.total_return || 0);
       const retCls = ret >= 0 ? 'val-pos' : 'val-neg';

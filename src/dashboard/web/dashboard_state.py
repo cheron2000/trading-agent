@@ -7,8 +7,8 @@ Thread-safe state store for the web dashboard.
 Dual interface:
   - Module-level singleton API  (used by run_hour.py and the control
     endpoints): set_running(), update_portfolio(), push_trade(),
-    push_decision(), push_warning(), push_news(), pop_manual_tick(),
-    is_kill_requested(), snapshot()
+    push_decision(), push_warning(), push_news(), push_key_status(),
+    pop_manual_tick(), is_kill_requested(), snapshot()
   - Class-based DashboardState   (used by unit tests in
     test_dashboard_web.py and any caller that wants an isolated
     instance): record_event(), update_metrics(), update_positions(),
@@ -145,6 +145,7 @@ _decisions: deque[dict[str, Any]] = deque(maxlen=_MAX_DECISIONS)
 _warnings: deque[dict[str, Any]] = deque(maxlen=_MAX_WARNINGS)
 _news: dict[str, str] = {}
 _chart_history: deque[dict[str, Any]] = deque(maxlen=_MAX_CHART_POINTS)
+_key_status: dict[str, Any] = {}
 
 # Control flags
 _manual_tick_pending: bool = False
@@ -249,12 +250,10 @@ def push_decision(
     rationale: str,
 ) -> None:
     with _lock:
-        # Keep only latest per symbol — remove old entry first
         existing_idx = next(
             (i for i, d in enumerate(_decisions) if d.get("symbol") == symbol), None
         )
         if existing_idx is not None:
-            # deque doesn't support random delete; rebuild without it
             items = list(_decisions)
             items.pop(existing_idx)
             _decisions.clear()
@@ -280,6 +279,14 @@ def push_warning(source: str, message: str) -> None:
 def push_news(symbol: str, text: str) -> None:
     with _lock:
         _news[symbol] = text
+    _broadcast_snapshot()
+
+
+def push_key_status(key_status: dict[str, Any]) -> None:
+    """Push current Groq key rotation status."""
+    global _key_status
+    with _lock:
+        _key_status = dict(key_status)
     _broadcast_snapshot()
 
 
@@ -354,6 +361,7 @@ def snapshot() -> dict[str, Any]:
             "warnings": list(_warnings),
             "news": dict(_news),
             "chart_history": list(_chart_history),
+            "key_status": dict(_key_status),
         }
 
 

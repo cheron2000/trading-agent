@@ -105,12 +105,12 @@ Crypto (BTC, ETH) can trade 24/7. Pre/after-market data is noisy.
 
 ---
 
-### FEAT-10: News Sentiment Score in Prompt
-**Status:** `[ ]`  
+### FEAT-10: News Sentiment Score in Prompt ✅ DONE
+**Status:** `[x]`  
 **Impact:** ★★★☆☆  
-**File:** `src/intelligence/strategies/ollama_strategy.py`, `run_hour.py`  
-**What:** Convert raw headlines into a numeric sentiment score (-1.0 to +1.0) using the LLM,  
-then pass that score (not the raw headline) into the trading decision prompt.  
+**File:** `src/intelligence/strategies/atlas_strategy.py`, `src/data/providers/news_aggregator.py`, `run_hour.py`  
+**What:** Convert raw headlines into a numeric sentiment score (-1.0 to +1.0) using provider sentiment parsers,  
+then pass that score into the trading decision prompt.  
 **Depends on:** FEAT-05.
 
 ---
@@ -125,8 +125,8 @@ Groups: [AAPL, MSFT, GOOGL, TSLA] = Tech, [BTC-USD, ETH-USD] = Crypto.
 
 ---
 
-### FEAT-12: Backtesting Framework
-**Status:** `[ ]`  
+### FEAT-12: Backtesting Framework ✅ DONE
+**Status:** `[x]`  
 **Impact:** ★★★★★  
 **File:** `backtest.py` (new entry point)  
 **What:** Replay historical OHLCV data through the full strategy pipeline.  
@@ -164,6 +164,6 @@ FEAT-01 → FEAT-02 → FEAT-03 → FEAT-04   [FeatureEngineer upgrades, all in 
 | FEAT-07: ATR Stop-Loss | `[x]` | ★★★★★ |
 | FEAT-08: Daily Loss Limit | `[x]` | ★★★★★ |
 | FEAT-09: Market Hours | `[x]` | ★★★☆☆ |
-| FEAT-10: News Sentiment Score | `[ ]` | ★★★☆☆ |
+| FEAT-10: News Sentiment Score | `[x]` | ★★★☆☆ |
 | FEAT-11: Correlation Limits | `[x]` | ★★★☆☆ |
-| FEAT-12: Backtesting | `[ ]` | ★★★★★ |
+| FEAT-12: Backtesting | `[x]` | ★★★★★ |

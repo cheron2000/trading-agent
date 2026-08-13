@@ -165,6 +165,46 @@ class NewsAggregator:
 
         return ""  # all sources failed — LLM uses price features only
 
+    def get_sentiment_score(self, symbol: str) -> float:
+        """Calculate aggregate numeric sentiment score (-1.0 to +1.0) for symbol.
+
+        Args:
+            symbol: Ticker symbol (e.g. "AAPL").
+
+        Returns:
+            Float sentiment score between -1.0 and +1.0 (0.0 if no news or neutral).
+        """
+        sym = symbol.strip().upper()
+        headlines = []
+
+        if self._finnhub is not None and "finnhub" not in self._degraded:
+            try:
+                headlines = self._finnhub.get_headlines(sym)
+            except Exception:
+                pass
+
+        if not headlines and self._av is not None and "av" not in self._degraded:
+            try:
+                headlines = self._av.get_headlines(sym)
+            except Exception:
+                pass
+
+        if not headlines and self._yf is not None:
+            try:
+                headlines = self._yf.get_headlines(sym)
+            except Exception:
+                pass
+
+        if not headlines:
+            return 0.0
+
+        scores = [h.get("sentiment_score", 0.0) for h in headlines if "sentiment_score" in h]
+        if not scores:
+            return 0.0
+
+        avg_score = sum(scores) / len(scores)
+        return max(-1.0, min(1.0, float(avg_score)))
+
     def status(self) -> dict:
         """Return health status of all news sources."""
         return {
