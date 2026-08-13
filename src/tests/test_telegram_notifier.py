@@ -9,7 +9,6 @@ from types import SimpleNamespace
 import pytest
 from unittest.mock import MagicMock
 from dashboard.telegram.telegram_notifier import TelegramNotifier
-from foundation.base_event import BaseEvent
 
 
 def test_telegram_notifier_init_validation():

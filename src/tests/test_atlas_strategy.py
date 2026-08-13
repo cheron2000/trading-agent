@@ -7,7 +7,7 @@ Unit tests for AtlasStrategy prompt generation, JSON response parsing, and error
 
 from datetime import datetime, timezone
 import pytest
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 from data.models.feature_vector import FeatureVector
 from intelligence.strategies.atlas_strategy import AtlasStrategy
 

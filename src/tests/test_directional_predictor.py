@@ -1,4 +1,3 @@
-import pytest
 import time
 import random
 from intelligence.ml.directional_predictor import DirectionalPredictor

@@ -1,5 +1,3 @@
-import pytest
-import time
 from data.features.support_resistance import SupportResistanceCalculator
 
 
