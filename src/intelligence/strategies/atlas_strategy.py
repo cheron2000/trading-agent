@@ -219,6 +219,26 @@ class AtlasStrategy:
         daily_trend = pos_ctx.get("daily_trend", "NEUTRAL") if pos_ctx else "NEUTRAL"
         trade_reflections = pos_ctx.get("trade_reflections", "") if pos_ctx else ""
 
+        ml_prob_up = pos_ctx.get("ml_prob_up", 0.5) if pos_ctx else 0.5
+        sr_levels = pos_ctx.get("sr_levels", {}) if pos_ctx else {}
+
+        # Format S/R levels for prompt
+        nearest_support = sr_levels.get("nearest_support")
+        nearest_resistance = sr_levels.get("nearest_resistance")
+        support_dist = sr_levels.get("support_distance_pct")
+        resistance_dist = sr_levels.get("resistance_distance_pct")
+
+        sr_line = "Support/Resistance: "
+        if nearest_support is not None and support_dist is not None:
+            sr_line += f"Nearest Support=${nearest_support:.2f} ({support_dist:+.1f}%)"
+        else:
+            sr_line += "Nearest Support=N/A"
+        sr_line += "  |  "
+        if nearest_resistance is not None and resistance_dist is not None:
+            sr_line += f"Nearest Resistance=${nearest_resistance:.2f} ({resistance_dist:+.1f}%)"
+        else:
+            sr_line += "Nearest Resistance=N/A"
+
         pos_str = f"Status: {'HOLDING' if has_pos else 'FLAT (No Position)'}, Entry: ${entry_price:.2f}, PnL: {pnl_pct:+.2f}%, Held: {hold_cycles} cycles"
 
         reflections_section = ""
@@ -243,6 +263,8 @@ Detected Regime: {str(regime_label).upper()}           Regime Confidence: {regim
 
 Position Context: {pos_str}
 News Sentiment Score: {news_score:+.2f} (-1.0 to +1.0)
+ML Forecast: P(price_up_next_interval) = {ml_prob_up:.2f}  (GBM, retrained every 30min)
+{sr_line}
 News Context: {news_ctx[:400]}
 {reflections_section}
 ═══════════════════════════════════════
@@ -255,23 +277,27 @@ STEP 1 — Confirm Regime Gate:
   - volatile (ATR ratio >= 1.5) -> High volatility — require 3/3 layer confluence (cap max confidence at 70)
   - crisis   (ATR ratio >= 2.5) -> Capital preservation only (HOLD / stay flat)
 
-STEP 2 — Score Confluence (3 layers):
+STEP 2 — Score Confluence (4 layers):
   a) Trend layer: MACD line/signal/histogram agree with direction
   b) Momentum layer: RSI supports direction (BUY if RSI < 45; SELL if RSI > 55)
   c) Volatility layer: Price position in Bollinger Bands supports direction (percent_b < 0.35 for BUY, > 0.65 for SELL)
+  d) ML Forecast layer: Does the GBM model's P(up) support the direction?
+     P(up) > 0.55 supports BUY. P(up) < 0.45 supports SELL. 0.45-0.55 is neutral.
   Scoring:
-    3/3 agree = High conviction signal → confidence 75-90
-    2/3 agree = Actionable signal → confidence 60-74
-    1/3 or 0/3 agree = Insufficient confluence → HOLD (confidence < 60)
+    4/4 or 3/4 agree = High conviction signal → confidence 75-90
+    2/4 agree = Actionable signal → confidence 60-74
+    1/4 or 0/4 agree = Insufficient confluence → HOLD (confidence < 60)
 
 STEP 3 — Risk & Reward Gate:
   - Stop-loss: 1.5-2x ATR from entry price.
   - Take-profit: Minimum 2:1 reward:risk ratio. If < 2:1 → HOLD.
+  - Support/Resistance Gate: Do NOT BUY if price is within 0.5% of nearest resistance.
+    Do NOT SELL if price is within 0.5% of nearest support.
 
 STEP 4 — Defensive Confidence Calibration (0-100):
   - 0-59  : Insufficient setup / low conviction → HOLD
-  - 60-74 : 2/3 layers agree → BUY / SELL
-  - 75-100: 3/3 layers agree + favorable regime → HIGH CONVICTION BUY / SELL
+  - 60-74 : 2/4 layers agree → BUY / SELL
+  - 75-100: 3/4 or 4/4 layers agree + favorable regime → HIGH CONVICTION BUY / SELL
 
 ═══════════════════════════════════════
 REQUIRED JSON RESPONSE ONLY

@@ -24,6 +24,8 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 sys.path.insert(0, "src")
+from intelligence.ml.directional_predictor import DirectionalPredictor
+from data.features.support_resistance import SupportResistanceCalculator
 
 # Force unbuffered stdout so prints appear immediately in logs
 import functools
@@ -338,6 +340,11 @@ _entry_indicators: dict[str, dict] = {}  # symbol -> indicators at entry time
 trade_memory = TradeMemory()
 print(f"[OK] Trade Memory loaded: {trade_memory.total_entries} past reflections")
 
+# ML Directional Predictor & Support/Resistance Calculator
+ml_predictor = DirectionalPredictor(lookback=100, retrain_ttl_seconds=1800.0)
+sr_calculator = SupportResistanceCalculator(swing_window=5, cache_ttl_seconds=900.0)
+print("[OK] ML Directional Predictor and S/R Calculator initialized")
+
 # Restore entry prices from existing positions (for restart resilience)
 for sym, (qty, avg_price) in portfolio.all_positions().items():
     if qty > 1e-9:  # Has position
@@ -614,6 +621,21 @@ while not shutdown:
             ticks = provider.fetch_recent(symbol, n=26)
             fv = engineer.compute(ticks)
 
+            # Fetch extended history for ML predictor & S/R calculator
+            try:
+                extended_ticks = provider.fetch_recent(symbol, n=100)
+                extended_prices = [t.price for t in extended_ticks]
+                extended_volumes = [t.volume for t in extended_ticks]
+            except Exception:
+                extended_prices = [t.price for t in ticks]
+                extended_volumes = [t.volume for t in ticks]
+
+            # ML directional prediction
+            ml_prob_up = ml_predictor.predict(symbol, extended_prices, extended_volumes)
+
+            # Support/Resistance levels
+            sr_levels = sr_calculator.calculate(symbol, extended_prices, tick.price)
+
             # --- Dynamic ADX Regime Classification ---
             prices_for_regime = [t.price for t in ticks]
             if len(prices_for_regime) >= 16:
@@ -643,6 +665,7 @@ while not shutdown:
                 daily_trend = _get_daily_trend(symbol)
                 _daily_trend_cache[sym] = (daily_trend, _time_mod.monotonic())
                 print(f"  [{symbol}] Daily trend: {daily_trend}")
+                print(f"  [{symbol}] ML P(up)={ml_prob_up:.2f} | S={sr_levels.get('nearest_support', 'N/A')} R={sr_levels.get('nearest_resistance', 'N/A')}")
 
             # Build position context for LLM memory
             pos_context = None
@@ -661,6 +684,8 @@ while not shutdown:
                     "news_sentiment_score": _news_score_cache.get(sym, 0.0),
                     "daily_trend": daily_trend,
                     "trade_reflections": _trade_reflections,
+                    "ml_prob_up": ml_prob_up,
+                    "sr_levels": sr_levels,
                 }
                 print(f"  [{symbol}] Asking {strategy.strategy_id}...")
                 decision = strategy.evaluate_with_context(fv, position_context=pos_context)

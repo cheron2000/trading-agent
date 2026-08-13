@@ -383,20 +383,56 @@
     .log-src { color: var(--yellow-glow); font-weight: 600; width: 90px; }
     .log-msg { color: var(--red-glow); flex: 1; }
 
-    .news-card {
-      background: rgba(255, 255, 255, 0.02);
-      border: 1px solid var(--panel-border);
-      border-radius: 10px;
-      padding: 12px 16px;
-      margin-bottom: 10px;
-    }
-    .news-sym {
-      color: var(--accent-cyan);
-      font-weight: 700;
+    .news-text {
+      color: var(--text-muted);
       font-size: 12px;
-      margin-bottom: 4px;
+      line-height: 1.4;
     }
+  </style>
+</head>
+<body>
 
+  <!-- Header / Navigation -->
+  <header>
+    <div class="brand">
+      <div class="brand-logo">AI</div>
+      <div>
+        <div class="brand-title">AI Trading OS — Command Dashboard</div>
+        <div class="brand-subtitle">Autonomous 7-Layer Algorithmic Execution System</div>
+      </div>
+    </div>
+
+    <div class="controls-group">
+      <div class="status-badge">
+        <div class="pulse-dot online" id="pulse-dot"></div>
+        <span id="session-status-text">Live System Online</span>
+      </div>
+
+      <select id="strategy-selector" class="select-sm" onchange="changeStrategy(this.value)">
+        <option value="ATLAS">ATLAS Strategy (LLM)</option>
+        <option value="SIMPLE-RULE">Simple Rule Strategy</option>
+        <option value="GROQ-LLM">Groq LLM Strategy</option>
+        <option value="OLLAMA">Ollama Local LLM</option>
+      </select>
+
+      <button class="btn btn-primary" onclick="triggerManualTick()">
+        <i data-lucide="play"></i> Trigger Tick
+      </button>
+
+      <button class="btn btn-danger" onclick="triggerKillSwitch()">
+        <i data-lucide="power"></i> Emergency Stop
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <div class="app-container">
+
+    <!-- Metrics Cards Grid -->
+    <div class="metrics-grid">
+
+      <div class="metric-card">
+        <div class="metric-label">Total Portfolio Value</div>
         <div class="metric-value val-neu" id="m-pv">$100,000.00</div>
         <div class="metric-sub" id="m-pv-sub">Initial Capital</div>
       </div>
@@ -642,25 +678,50 @@
     }
 
     // Formatting Helpers
+    function fmtMoney(val) {
+      return '$' + parseFloat(val || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
 
+    function fmtPnl(val) {
+      const v = parseFloat(val || 0);
+      const sign = v >= 0 ? '+' : '';
+      const cls = v > 0 ? 'val-pos' : v < 0 ? 'val-neg' : 'val-neu';
+      return `<span class="${cls}">${sign}$${Math.abs(v).toFixed(2)}</span>`;
+    }
+
+    function applySnapshot(s) {
+      if (!s) return;
+      _applyingSnapshot = true;
+
+      // Update metric cards
+      if ($('m-pv')) $('m-pv').textContent = fmtMoney(s.portfolio_value || 0);
+      if ($('m-pnl')) {
+        $('m-pnl').textContent = fmtMoney(s.total_pnl || 0);
+        $('m-pnl').className = `metric-value ${(s.total_pnl || 0) >= 0 ? 'val-pos' : 'val-neg'}`;
+      }
 
       const ret = parseFloat(s.total_return || 0);
       const retCls = ret >= 0 ? 'val-pos' : 'val-neg';
-      $('m-ret').innerHTML = `<span class="${retCls}">${ret >= 0 ? '+' : ''}${(ret * 100).toFixed(4)}%</span>`;
+      if ($('m-ret')) $('m-ret').innerHTML = `<span class="${retCls}">${ret >= 0 ? '+' : ''}${(ret * 100).toFixed(4)}%</span>`;
 
-      $('m-wr').textContent = `${((s.win_rate || 0) * 100).toFixed(1)}%`;
-      $('m-rt').textContent = `${s.total_trades || 0} Round Trips`;
+      if ($('m-wr')) $('m-wr').textContent = `${((s.win_rate || 0) * 100).toFixed(1)}%`;
+      if ($('m-rt')) $('m-rt').textContent = `${s.total_trades || 0} Round Trips`;
 
       const sh = parseFloat(s.sharpe_ratio || 0);
-      $('m-sh').innerHTML = `<span class="${sh >= 1 ? 'val-pos' : sh > 0 ? 'val-neu' : 'val-neg'}">${sh.toFixed(4)}</span>`;
+      if ($('m-sh')) $('m-sh').innerHTML = `<span class="${sh >= 1 ? 'val-pos' : sh > 0 ? 'val-neu' : 'val-neg'}">${sh.toFixed(4)}</span>`;
 
-      $('m-dd').textContent = `${((s.max_drawdown || 0) * 100).toFixed(4)}%`;
-      $('m-cash').textContent = fmtMoney(s.cash || 0);
+      if ($('m-dd')) $('m-dd').textContent = `${((s.max_drawdown || 0) * 100).toFixed(4)}%`;
+      if ($('m-cash')) $('m-cash').textContent = fmtMoney(s.cash || 0);
 
-      if (s.uptime_seconds !== null && s.uptime_seconds !== undefined) {
+      if (s.uptime_seconds !== null && s.uptime_seconds !== undefined && $('m-uptime')) {
         const m = Math.floor(s.uptime_seconds / 60);
         $('m-uptime').textContent = `Uptime: ${m}m ${s.uptime_seconds % 60}s`;
       }
+
+      if (s.strategy_mode && $('strategy-selector')) {
+        $('strategy-selector').value = s.strategy_mode;
+      }
+      _applyingSnapshot = false;
 
       // Chart Update
       if (equityChart && s.chart_history && s.chart_history.length > 0) {
