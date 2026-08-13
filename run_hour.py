@@ -183,7 +183,157 @@ def _is_market_open(symbol: str) -> bool:
     Crypto: Always tradeable (24/7 market).
     Pre/after market is excluded to avoid low-quality data.
     """
+    if symbol in _CRYPTO_SYMBOLS:
+        return True
+    now_et = datetime.now(timezone.utc).astimezone(timezone(timedelta(hours=-5))) # ET approximation
+    if now_et.weekday() >= 5: # Weekend
+        return False
+    market_open = now_et.replace(hour=9, minute=30, second=0, microsecond=0)
+    market_close = now_et.replace(hour=16, minute=0, second=0, microsecond=0)
+    return market_open <= now_et <= market_close
 
+# --- EventBus + RateLimiter ---
+_rl = RateLimiter(default_rate=1000.0, default_capacity=2000.0)
+_rl.set_limit("data", rate=500.0, capacity=1000.0)
+_rl.set_limit("intelligence", rate=200.0, capacity=400.0)
+_rl.set_limit("execution", rate=100.0, capacity=200.0)
+bus = EventBus(rate_limiter=_rl)
+
+# --- Task 6.1: Add --telegram flag ---
+_telegram_notifier = None
+if "--telegram" in sys.argv:
+    from load_keys import load_telegram_keys
+    from dashboard.telegram.telegram_notifier import TelegramNotifier
+    try:
+        _bot_token, _chat_id = load_telegram_keys()
+        _telegram_notifier = TelegramNotifier(
+            bus=bus,
+            bot_token=_bot_token,
+            chat_id=_chat_id,
+            notify_hold=False,
+        )
+    except (FileNotFoundError, ValueError) as exc:
+        print(f"  WARNING: Telegram disabled — {exc}")
+
+# --- Task 6.2: Add --alpaca flag ---
+_use_alpaca = "--alpaca" in sys.argv
+alpaca_order_manager = None
+if _use_alpaca:
+    from load_keys import load_alpaca_keys
+    from execution.broker.alpaca_order_manager import AlpacaOrderManager
+    _alpaca_api_key, _alpaca_secret_key = load_alpaca_keys()
+    alpaca_order_manager = AlpacaOrderManager(
+        bus=bus,
+        initial_portfolio_value=capital,
+        api_key=_alpaca_api_key,
+        secret_key=_alpaca_secret_key,
+        live_trading=False,
+    )
+    print(f"  Execution:      AlpacaOrderManager (paper mode)")
+else:
+    print(f"  Execution:      OrderManager (in-memory paper fill)")
+
+# --- L3 Data ---
+# Try live yfinance first, fall back to fixture data if it fails
+from data.providers.market_provider import MarketDataProvider
+try:
+    provider = YFinanceProvider(symbols=SYMBOLS, ttl_seconds=55.0, use_tor=True)
+    # Test real fetch — raise Exception if rate-limited or unavailable
+    test_tick = provider.fetch(SYMBOLS[0])
+    if not test_tick or test_tick.price <= 0:
+        raise ValueError("Invalid tick from YFinance")
+    print(f"[OK] Using LIVE YFinance data provider (AAPL=${test_tick.price:.2f})\n")
+except Exception as exc:
+    print(f"[WARN] YFinance unavailable/rate-limited ({exc}), falling back to instant fixture data...\n")
+    provider = MarketDataProvider()
+engineer = FeatureEngineer(window_size=20)
+
+# --- L3.5 News Aggregator (for LLM context) ---
+from data.providers.news_aggregator import NewsAggregator
+from load_keys import load_av_keys, load_finnhub_key
+
+av_keys = load_av_keys()
+finnhub_key = load_finnhub_key()
+news_agg = NewsAggregator(
+    finnhub_key=finnhub_key,
+    av_keys=av_keys,
+    max_articles=3,
+    cache_ttl=300.0,
+)
+print(f"[OK] News aggregator initialized: {news_agg.status()}\n")
+
+# --- L4 Candle Intelligence Layer ---
+from load_keys import load_ollama_model, load_ollama_host as _load_ollama_host
+_candle_strategy = CandleStrategy(
+    ollama_host=_load_ollama_host(),
+    ollama_model=load_ollama_model(),
+)
+
+# --- L4 Intelligence ---
+# Dynamic strategy selection based on --strategy flag
+if initial_strategy in ("ATLAS", "ATLAS-LLM"):
+    from load_keys import load_groq_keys, load_groq_model, load_ollama_model, load_ollama_host
+    from intelligence.strategies.atlas_strategy import AtlasStrategy
+    groq_keys = load_groq_keys()
+    groq_model = load_groq_model()
+    ollama_model = load_ollama_model()
+    ollama_host = load_ollama_host()
+    strategy = AtlasStrategy(
+        groq_api_key=groq_keys,
+        groq_model=groq_model,
+        timeout=30.0,
+    )
+    engine_desc = f"Groq ({groq_model})" if groq_keys else f"Local Ollama ({ollama_model})"
+    print(f"[OK] ATLAS strategy enabled — Primary engine: {engine_desc}")
+elif initial_strategy == "GROQ-LLM":
+    from load_keys import load_groq_keys, load_groq_model
+    from intelligence.strategies.llm_strategy import LLMStrategy
+    groq_keys = load_groq_keys()
+    groq_model = load_groq_model()
+    if not groq_keys:
+        print("[ERROR] GROQ_API_KEY not found in keys.env — falling back to SIMPLE-RULE")
+        strategy = SimpleRuleStrategy(threshold=0.3)
+    else:
+        strategy = LLMStrategy(api_key=groq_keys, model=groq_model)
+        print(f"[OK] LLM strategy enabled — model: {groq_model}, keys: {len(groq_keys)}")
+elif initial_strategy == "OLLAMA":
+    from load_keys import load_ollama_model, load_ollama_host
+    ollama_model = load_ollama_model()
+    ollama_host = load_ollama_host()
+    if OllamaStrategy is None:
+        print("[ERROR] OllamaStrategy could not be imported — falling back to SIMPLE-RULE")
+        strategy = SimpleRuleStrategy(threshold=0.3)
+    else:
+        strategy = OllamaStrategy(model=ollama_model, host=ollama_host)
+        print(f"[OK] OLLAMA strategy enabled — model: {ollama_model}, host: {ollama_host}")
+else:
+    strategy = SimpleRuleStrategy(threshold=0.3)
+
+# --- L5 Execution ---
+portfolio = Portfolio(initial_cash=capital)
+price_feed: dict[str, float] = {}
+risk_engine = RiskEngine(price_feed=price_feed, max_position_pct=0.25, min_confidence=0.3, max_total_exposure_pct=0.90)
+order_manager = OrderManager(price_feed=price_feed, bus=bus)
+tracker = PortfolioTracker(portfolio)
+
+# --- Task 6.6: Unify order execution dispatch ---
+_exec = alpaca_order_manager if _use_alpaca else order_manager
+
+# --- L6 Analytics ---
+metrics = MetricsEngine(initial_capital=capital)
+journal_path = (
+    Path(__file__).parent / "data_store" / "live" / f"journal-{run_label}.jsonl"
+)
+journal = TradeJournal.load_from_file(journal_path)
+report_gen = ReportGenerator(metrics, journal)
+print(f"Journal persisting to: {journal_path}\n")
+
+entry_prices: dict[str, float] = {}
+hold_cycles_tracker: dict[str, int] = {}
+trailing_stops: dict[str, float] = {}  # symbol → highest stop price seen
+_daily_trend_cache: dict[str, tuple[str, float]] = {}  # sym -> (trend, timestamp)
+_news_context_cache: dict[str, str] = {}  # symbol -> latest news context string
+_entry_rationales: dict[str, str] = {}  # symbol -> rationale at entry time
 _entry_indicators: dict[str, dict] = {}  # symbol -> indicators at entry time
 trade_memory = TradeMemory()
 print(f"[OK] Trade Memory loaded: {trade_memory.total_entries} past reflections")
