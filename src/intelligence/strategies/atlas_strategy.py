@@ -246,46 +246,32 @@ News Sentiment Score: {news_score:+.2f} (-1.0 to +1.0)
 News Context: {news_ctx[:400]}
 {reflections_section}
 ═══════════════════════════════════════
+═══════════════════════════════════════
 DECISION PROCESS — follow in order:
 ═══════════════════════════════════════
 STEP 1 — Confirm Regime Gate:
   - trending (ADX > 25) -> Trend-following (ride direction with VWAP/MACD confirm)
-  - ranging  (ADX < 20) -> Mean-reversion. In ranging markets, you MUST actively look for
-    small mean-reversion opportunities. Even modest deviations matter:
-    * percent_b < 0.35 → price is in the lower zone → lean BUY (fade back to midline)
-    * percent_b > 0.65 → price is in the upper zone → lean SELL (fade back to midline)
-    * RSI < 45 in ranging → lean BUY.  RSI > 55 in ranging → lean SELL.
-    * ANY non-zero MACD histogram direction is a valid signal in ranging markets.
-    DO NOT just default to HOLD because ADX is low — ranging markets are tradeable.
-  - volatile (ATR ratio >= 1.5) -> Breakout continuation only (cap max confidence at 70)
-  - crisis   (ATR ratio >= 2.5) -> Capital preservation only (HOLD / flat)
-  IMPORTANT: If daily trend is UPTREND/DOWNTREND, weight it heavily. BUY in UPTREND regime
-  is safer than in NEUTRAL. SELL in DOWNTREND is higher-conviction.
+  - ranging  (ADX < 20) -> Mean-reversion (require strict lower/upper band and RSI boundary setup)
+  - volatile (ATR ratio >= 1.5) -> High volatility — require 3/3 layer confluence (cap max confidence at 70)
+  - crisis   (ATR ratio >= 2.5) -> Capital preservation only (HOLD / stay flat)
 
 STEP 2 — Score Confluence (3 layers):
-  a) Trend layer: MACD line/signal/histogram agree with direction? (In ranging: ANY non-zero histogram counts)
-  b) Momentum layer: RSI supports the trade? (In ranging: RSI<48 supports BUY, RSI>52 supports SELL)
-  c) Volatility layer: Price position in Bollinger Bands supports direction? (percent_b away from 0.50)
+  a) Trend layer: MACD line/signal/histogram agree with direction
+  b) Momentum layer: RSI supports direction (BUY if RSI < 45; SELL if RSI > 55)
+  c) Volatility layer: Price position in Bollinger Bands supports direction (percent_b < 0.35 for BUY, > 0.65 for SELL)
   Scoring:
-    3/3 agree = Strong signal → confidence 75-95
-    2/3 agree = Actionable → confidence 55-74
-    1/3 agree in RANGING regime = Weak but tradeable → confidence 42-54 (still output BUY or SELL)
-    0/3 agree = No signal → HOLD
-  RSI OVERRIDE: RSI < 25 → always BUY (extreme oversold). RSI > 75 → always SELL (extreme overbought).
-  RANGING BIAS: In RANGING regime, you should output BUY or SELL at least 60% of the time.
-  Pure HOLD is only correct if ALL indicators are perfectly centered (RSI exactly 50.0, MACD exactly 0, percent_b exactly 0.50).
+    3/3 agree = High conviction signal → confidence 75-90
+    2/3 agree = Actionable signal → confidence 60-74
+    1/3 or 0/3 agree = Insufficient confluence → HOLD (confidence < 60)
 
 STEP 3 — Risk & Reward Gate:
-  - Stop-loss: 1.5-2x ATR from price.
-  - Take-profit: minimum 2:1 reward:risk ratio. If < 1.5:1 → HOLD.
+  - Stop-loss: 1.5-2x ATR from entry price.
+  - Take-profit: Minimum 2:1 reward:risk ratio. If < 2:1 → HOLD.
 
-STEP 4 — Assign Calibrated Confidence (0-100):
-  - 0-39  : No signal at all → HOLD
-  - 40-54 : Weak signal (1/3 layers in RANGING) → BUY/SELL with small size
-  - 55-74 : Moderate signal (2/3 layers agree) → BUY/SELL
-  - 75-89 : 3/3 layers agree → STRONG BUY/SELL
-  - 90-100: 3/3 agree + RSI override or extreme condition → HIGHEST CONVICTION
-  IMPORTANT: In RANGING markets, confidence 40+ is sufficient for a trade. Do NOT round down to HOLD.
+STEP 4 — Defensive Confidence Calibration (0-100):
+  - 0-59  : Insufficient setup / low conviction → HOLD
+  - 60-74 : 2/3 layers agree → BUY / SELL
+  - 75-100: 3/3 layers agree + favorable regime → HIGH CONVICTION BUY / SELL
 
 ═══════════════════════════════════════
 REQUIRED JSON RESPONSE ONLY
@@ -318,7 +304,6 @@ Respond with ONLY this JSON object, no markdown or surrounding text:
         pos_ctx: dict | None = None,
     ) -> Decision:
         symbol = fv.symbol
-        has_pos = pos_ctx.get("has_position", False) if pos_ctx else False
         try:
             raw = text.strip()
             first_brace = raw.find("{")
@@ -339,28 +324,11 @@ Respond with ONLY this JSON object, no markdown or surrounding text:
             else:
                 conf_norm = max(0.0, min(1.0, conf_raw))
 
-            # Quantitative Mean-Reversion Fallback for timid responses
-            f = fv.features
-            bb_pos = f.get("bb_position", 0.5)
-            rsi_val = f.get("rsi", 50.0)
-            adx_val = f.get("adx", 0.0)
-            reasoning = data.get("reasoning", "ATLAS evaluation")
-
-            if action == "HOLD" or conf_norm < 0.40:
-                if adx_val < 20:  # Ranging regime
-                    if not has_pos:
-                        action = "BUY"
-                        conf_norm = 0.55
-                        reasoning = f"Aggressive Ranging Entry: Initiating long position (percent_b={bb_pos:.2f}, rsi={rsi_val:.1f})"
-                    else:
-                        if bb_pos > 0.65 or rsi_val > 55:
-                            action = "SELL"
-                            conf_norm = 0.60
-                            reasoning = f"Aggressive Ranging Exit: Upper Bollinger mean-reversion target reached (percent_b={bb_pos:.2f})"
-
-            if conf_norm < 0.40:
+            # Defensive Gate: require confidence >= 0.60 for trades
+            if conf_norm < 0.60:
                 action = "HOLD"
 
+            reasoning = data.get("reasoning", "ATLAS defensive evaluation")
             engine_display = engine_name or "UnknownEngine"
             rationale = f"[{engine_display}] [{data.get('regime_used', 'N/A').upper()}] {reasoning}"
 
