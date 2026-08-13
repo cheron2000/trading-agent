@@ -4,17 +4,18 @@ from typing import Optional
 
 logger = logging.getLogger(__name__)
 
+
 class SupportResistanceCalculator:
     """
     Identifies key support and resistance levels from a price series
     using swing high/low detection.
-    
+
     A swing high is a price point higher than its N neighbors on both sides.
     A swing low is a price point lower than its N neighbors on both sides.
-    
+
     Returns the 2 nearest support levels (below current price) and
     2 nearest resistance levels (above current price).
-    
+
     Caching:
       - Results are cached per symbol with a 15-minute TTL.
     """
@@ -22,11 +23,13 @@ class SupportResistanceCalculator:
     def __init__(self, swing_window: int = 5, cache_ttl_seconds: float = 900.0) -> None:
         self.swing_window = swing_window
         self.cache_ttl_seconds = cache_ttl_seconds
-        
+
         # {symbol: (supports, resistances, nearest_support, nearest_resistance, supp_dist, res_dist, cached_at)}
         self._cache: dict[str, tuple[dict, float]] = {}
 
-    def _cluster_levels(self, levels: list[float], threshold_pct: float = 0.5) -> list[float]:
+    def _cluster_levels(
+        self, levels: list[float], threshold_pct: float = 0.5
+    ) -> list[float]:
         """Merge levels within threshold_pct of each other."""
         if not levels:
             return []
@@ -49,7 +52,7 @@ class SupportResistanceCalculator:
             "nearest_support": None,
             "nearest_resistance": None,
             "support_distance_pct": None,
-            "resistance_distance_pct": None
+            "resistance_distance_pct": None,
         }
 
         if len(prices) < 2 * self.swing_window + 1 or current_price <= 0:
@@ -67,24 +70,36 @@ class SupportResistanceCalculator:
         for i in range(self.swing_window, len(prices) - self.swing_window):
             left_window = prices[i - self.swing_window : i]
             right_window = prices[i + 1 : i + 1 + self.swing_window]
-            
+
             if prices[i] > max(left_window) and prices[i] > max(right_window):
                 swing_highs.append(prices[i])
-                
+
             if prices[i] < min(left_window) and prices[i] < min(right_window):
                 swing_lows.append(prices[i])
 
         clustered_highs = self._cluster_levels(swing_highs)
         clustered_lows = self._cluster_levels(swing_lows)
 
-        supports = sorted([level for level in clustered_lows if level < current_price], reverse=True)[:2]
-        resistances = sorted([level for level in clustered_highs if level > current_price])[:2]
+        supports = sorted(
+            [level for level in clustered_lows if level < current_price], reverse=True
+        )[:2]
+        resistances = sorted(
+            [level for level in clustered_highs if level > current_price]
+        )[:2]
 
         nearest_support = supports[0] if supports else None
         nearest_resistance = resistances[0] if resistances else None
-        
-        support_distance_pct = ((nearest_support - current_price) / current_price * 100) if nearest_support else None
-        resistance_distance_pct = ((nearest_resistance - current_price) / current_price * 100) if nearest_resistance else None
+
+        support_distance_pct = (
+            ((nearest_support - current_price) / current_price * 100)
+            if nearest_support
+            else None
+        )
+        resistance_distance_pct = (
+            ((nearest_resistance - current_price) / current_price * 100)
+            if nearest_resistance
+            else None
+        )
 
         result = {
             "supports": supports,

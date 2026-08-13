@@ -105,7 +105,9 @@ class AtlasStrategy:
         try:
             response_json_str, engine_used = self._call_groq(prompt)
         except Exception as exc:
-            _log.error("ATLAS Groq LLM evaluation failed after rolling all keys: %s", exc)
+            _log.error(
+                "ATLAS Groq LLM evaluation failed after rolling all keys: %s", exc
+            )
             return Decision(
                 symbol=feature_vector.symbol,
                 action="HOLD",
@@ -125,7 +127,7 @@ class AtlasStrategy:
 
     def _call_groq(self, prompt: str) -> tuple[str, str]:
         """Call Groq API with sequential key rolling.
-        
+
         Returns:
             Tuple of (response_json_str, engine_display_name).
         """
@@ -139,7 +141,9 @@ class AtlasStrategy:
             # Advance rotation index for next call
             self._groq_key_idx = (self._groq_key_idx + 1) % max_attempts
 
-            masked_key = f"{api_key[:8]}...{api_key[-4:]}" if len(api_key) > 12 else api_key
+            masked_key = (
+                f"{api_key[:8]}...{api_key[-4:]}" if len(api_key) > 12 else api_key
+            )
             key_tag = f"Key #{key_index + 1}/{max_attempts} ({masked_key})"
             self._last_key_info = key_tag
 
@@ -179,7 +183,9 @@ class AtlasStrategy:
                     (self._groq_key_idx + 1),
                 )
 
-        raise RuntimeError(f"All {max_attempts} Groq keys failed. Last error: {last_error}")
+        raise RuntimeError(
+            f"All {max_attempts} Groq keys failed. Last error: {last_error}"
+        )
 
     # ------------------------------------------------------------------
     # System Prompt Generator

@@ -4,6 +4,7 @@ src/tests/test_alpaca_order_manager.py
 
 Unit tests for AlpacaOrderManager risk gates and paper trading instantiation.
 """
+
 import pytest
 from unittest.mock import MagicMock
 from execution.broker.alpaca_order_manager import AlpacaOrderManager
@@ -12,7 +13,9 @@ from execution.broker.alpaca_order_manager import AlpacaOrderManager
 def test_alpaca_order_manager_live_gate():
     mock_bus = MagicMock()
     # Attempting live trading without paper_validation_complete MUST raise ValueError
-    with pytest.raises(ValueError, match="Live trading requires paper_validation_complete=True"):
+    with pytest.raises(
+        ValueError, match="Live trading requires paper_validation_complete=True"
+    ):
         AlpacaOrderManager(
             bus=mock_bus,
             initial_portfolio_value=10000.0,

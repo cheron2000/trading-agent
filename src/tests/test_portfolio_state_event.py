@@ -4,6 +4,7 @@ src/tests/test_portfolio_state_event.py
 
 Unit tests for PortfolioStateEvent model immutability, construction, and serialization.
 """
+
 import pytest
 from communication.events.portfolio_state_event import PortfolioStateEvent
 

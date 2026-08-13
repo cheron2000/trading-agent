@@ -4,6 +4,7 @@ src/tests/test_telegram_notifier.py
 
 Unit tests for TelegramNotifier constructor validation, message formatting, and portfolio cache updates.
 """
+
 from types import SimpleNamespace
 import pytest
 from unittest.mock import MagicMock

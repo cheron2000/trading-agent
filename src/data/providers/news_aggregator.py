@@ -198,7 +198,9 @@ class NewsAggregator:
         if not headlines:
             return 0.0
 
-        scores = [h.get("sentiment_score", 0.0) for h in headlines if "sentiment_score" in h]
+        scores = [
+            h.get("sentiment_score", 0.0) for h in headlines if "sentiment_score" in h
+        ]
         if not scores:
             return 0.0
 
