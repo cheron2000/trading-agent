@@ -46,7 +46,8 @@ class SupportResistanceCalculator:
         """
         Returns a dictionary containing the nearest support and resistance levels.
         """
-        empty_result = {
+        from typing import Any
+        empty_result: dict[str, Any] = {
             "supports": [],
             "resistances": [],
             "nearest_support": None,

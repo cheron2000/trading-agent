@@ -179,19 +179,19 @@ class NewsAggregator:
 
         if self._finnhub is not None and "finnhub" not in self._degraded:
             try:
-                headlines = self._finnhub.get_headlines(sym)
+                headlines = self._finnhub.fetch_sentiment(sym)
             except Exception:
                 pass
 
         if not headlines and self._av is not None and "av" not in self._degraded:
             try:
-                headlines = self._av.get_headlines(sym)
+                headlines = self._av.fetch_sentiment(sym)
             except Exception:
                 pass
 
         if not headlines and self._yf is not None:
             try:
-                headlines = self._yf.get_headlines(sym)
+                headlines = self._yf.fetch_sentiment(sym)
             except Exception:
                 pass
 
